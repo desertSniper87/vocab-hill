@@ -4,7 +4,10 @@ Welcome to the project documentation. This folder contains detailed information 
 
 ## Table of Contents
 
-- [1. Architecture](1.%20Architecture/Decisions.md)
-  - Architectural decisions and system layout.
-- [2. Data Structure](2.%20Data_Structure/Vocabulary_Schema.md)
-  - Detailed schema definitions for vocabulary files.
+- [1. Overview](1-overview/README.md)
+- [2. Architecture](2-architecture/README.md)
+  - [Architectural Decisions](2-architecture/decisions/README.md)
+- [3. Agents](3-agents/README.md)
+- [4. Algorithms](4-algorithms/README.md)
+- [5. API](5-api/README.md)
+- [6. Deployment](6-deployment/README.md)

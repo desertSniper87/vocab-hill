@@ -1,28 +1,73 @@
 # AGENTS.md
 
-This document provides instructions for any agent (like Jules) working on this repository.
+This document governs how any agent (e.g., Jules, Claude, Codex, Kilo) working on this repository must handle documentation. Treat it as a hard contract, not a style guide.
 
-## Documentation Requirements
+---
 
-The `docs` folder is the source of truth for the project's architecture and design. All changes to the codebase MUST be reflected in the documentation.
+## 1. The `docs/` Folder Is the Source of Truth
 
-### Structure
+All architectural, algorithmic, and structural decisions live in `docs/`. Code without corresponding documentation is considered incomplete. Any PR that modifies logic or structure **must** update the relevant docs in the same commit — not after, not in a follow-up.
 
-- The `docs` folder MUST be nicely structured using numbered prefixes (e.g., `1. Architecture`, `2. Data_Structure`).
-- Documentation MUST be organized into folders.
-- Every major feature or decision MUST have a corresponding Markdown document.
+---
 
-### Content Standards
+## 2. Folder Structure
 
-- **Table of Contents:** The `docs/README.md` MUST serve as a Table of Contents for the entire documentation root.
-- **Mermaid Diagrams:** Architectural decisions MUST be accompanied by Mermaid diagrams to visualize system components and data flow.
-- **Code Line References:** Algorithmic decisions or complex logic MUST include references to specific code lines where applicable.
-- **Sync with Code:** Documentation MUST be kept in sync with the codebase. Any PR or change that modifies logic or structure MUST also update the relevant documentation.
+`docs/` must use numbered, hyphenated folder prefixes. Each folder contains a `README.md` and any supporting files.
 
-## Verification
+```
+docs/
+├── README.md                  ← Table of Contents (auto-updated)
+├── 1-overview/
+├── 2-architecture/
+│   └── decisions/             ← ADRs live here
+├── 3-agents/
+├── 4-algorithms/
+├── 5-api/
+└── 6-deployment/
+```
 
-Before submitting any changes, ensure that:
-1. New documentation files are correctly placed in the structured folders.
-2. The `docs/README.md` is updated if new documents are added.
-3. Mermaid diagrams correctly render the intended architecture.
-4. All links between documentation files are functional.
+Rules:
+- Folder names: `{number}-{kebab-case-topic}` (e.g., `2-architecture`, not `2. Architecture`)
+- Every folder must have a `README.md`
+- New top-level sections get the next available number; do not renumber existing sections
+
+---
+
+## 3. Content Standards
+
+### 3.1 Table of Contents (`docs/README.md`)
+Must be updated whenever a document is added, removed, or renamed. It must link to every section README and every ADR.
+
+### 3.2 Mermaid Diagrams
+Every architectural decision must include a Mermaid diagram. Diagrams must reflect the *current* state of the system — a diagram that contradicts the code is a bug.
+
+Use diagrams for: system topology, data flow, component relationships, state machines, class hierarchies.
+
+### 3.3 Code Line References
+Algorithmic decisions must reference specific source lines using this format:
+
+```
+`path/to/file.py:L42-L60`
+```
+
+If the referenced lines move, the doc must be updated in the same PR. Stale line references are documentation bugs.
+
+### 3.4 Architecture Decision Records (ADRs)
+Significant decisions (why a pattern was chosen, why an alternative was rejected) must be recorded as ADRs in `docs/2-architecture/decisions/`.
+
+Filename format: `ADR-{000}-{kebab-case-title}.md`
+
+Each ADR must contain: **Status**, **Context**, **Decision**, **Consequences**.
+
+---
+
+## 4. Pre-Submission Checklist
+
+Before marking any task complete, verify each item. A failed item blocks submission.
+
+- [ ] New docs are placed in the correct numbered folder
+- [ ] `docs/README.md` is updated with any new or renamed documents
+- [ ] All Mermaid diagrams render correctly and reflect current code
+- [ ] All code line references (`file.py:L{n}`) point to current lines
+- [ ] All internal doc links resolve without 404
+- [ ] Any structural or algorithmic change has a corresponding ADR if it represents a new decision

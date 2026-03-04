@@ -1,11 +1,25 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vocab_hill/src/app.dart';
+import 'package:vocab_hill/src/models/progress_snapshot.dart';
 import 'package:vocab_hill/src/models/vocab_word.dart';
+import 'package:vocab_hill/src/models/word_status.dart';
+import 'package:vocab_hill/src/repositories/progress_repository.dart';
 import 'package:vocab_hill/src/repositories/vocab_repository.dart';
 
 void main() {
   testWidgets('renders a day board without take test labels', (tester) async {
-    await tester.pumpWidget(VocabHillApp(repository: FakeVocabRepository()));
+    final progressRepository = FakeProgressRepository(
+      snapshot: const ProgressSnapshot(
+        selectedDay: 3,
+        wordStatuses: <String, WordStatus>{'abound': WordStatus.learned},
+      ),
+    );
+    await tester.pumpWidget(
+      VocabHillApp(
+        repository: FakeVocabRepository(),
+        progressRepository: progressRepository,
+      ),
+    );
 
     await tester.pumpAndSettle();
 
@@ -20,6 +34,32 @@ void main() {
 
     expect(find.text('Definition'), findsOneWidget);
     expect(find.text('To exist in large quantities.'), findsOneWidget);
+
+    expect(progressRepository.savedSelectedDays, isEmpty);
+  });
+
+  testWidgets('persists status changes', (tester) async {
+    final progressRepository = FakeProgressRepository(
+      snapshot: const ProgressSnapshot(
+        selectedDay: 2,
+        wordStatuses: <String, WordStatus>{},
+      ),
+    );
+
+    await tester.pumpWidget(
+      VocabHillApp(
+        repository: FakeVocabRepository(),
+        progressRepository: progressRepository,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('abound'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Learned'));
+    await tester.pumpAndSettle();
+
+    expect(progressRepository.savedStatuses['abound'], WordStatus.learned);
   });
 }
 
@@ -49,5 +89,26 @@ class FakeVocabRepository implements VocabRepository {
         mnemonic: null,
       ),
     ];
+  }
+}
+
+class FakeProgressRepository implements ProgressRepository {
+  FakeProgressRepository({required this.snapshot});
+
+  final ProgressSnapshot snapshot;
+  final Map<String, WordStatus> savedStatuses = <String, WordStatus>{};
+  final List<int> savedSelectedDays = <int>[];
+
+  @override
+  Future<ProgressSnapshot> loadProgress() async => snapshot;
+
+  @override
+  Future<void> saveSelectedDay(int selectedDay) async {
+    savedSelectedDays.add(selectedDay);
+  }
+
+  @override
+  Future<void> saveWordStatus(String word, WordStatus status) async {
+    savedStatuses[word] = status;
   }
 }

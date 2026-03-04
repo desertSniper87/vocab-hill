@@ -1,34 +1,44 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../models/progress_snapshot.dart';
 import '../models/vocab_word.dart';
+import '../models/word_status.dart';
+import '../repositories/progress_repository.dart';
 import '../repositories/vocab_repository.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key, required this.repository});
+  const HomePage({
+    super.key,
+    required this.repository,
+    required this.progressRepository,
+  });
 
   final VocabRepository repository;
+  final ProgressRepository progressRepository;
 
   @override
   State<HomePage> createState() => _HomePageState();
 }
 
 class _HomePageState extends State<HomePage> {
-  late final Future<List<VocabWord>> _wordsFuture;
+  late final Future<_BoardData> _boardDataFuture;
   final Map<String, WordStatus> _wordStatuses = <String, WordStatus>{};
-  int _selectedDay = 6;
+  int? _selectedDay;
+  bool _restoredProgress = false;
 
   @override
   void initState() {
     super.initState();
-    _wordsFuture = widget.repository.loadWords();
+    _boardDataFuture = _loadBoardData();
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<List<VocabWord>>(
-      future: _wordsFuture,
+    return FutureBuilder<_BoardData>(
+      future: _boardDataFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
           return const Scaffold(
@@ -50,16 +60,28 @@ class _HomePageState extends State<HomePage> {
           );
         }
 
-        final words = snapshot.data ?? const <VocabWord>[];
-        final groupNames = _sortedGroupNames(words);
-        if (groupNames.isEmpty) {
+        final boardData = snapshot.data;
+        if (boardData == null || boardData.words.isEmpty) {
           return const Scaffold(
             body: Center(child: Text('No words found in the dataset.')),
           );
         }
 
+        final words = boardData.words;
+        final groupNames = _sortedGroupNames(words);
+        if (!_restoredProgress) {
+          _wordStatuses
+            ..clear()
+            ..addAll(boardData.progress.wordStatuses);
+          _selectedDay = boardData.progress.selectedDay;
+          _restoredProgress = true;
+        }
+
         final totalDays = groupNames.length;
-        final selectedDay = math.min(math.max(_selectedDay, 1), totalDays);
+        final selectedDay = math.min(
+          math.max(_selectedDay ?? math.min(6, totalDays), 1),
+          totalDays,
+        );
         final visibleGroups = groupNames
             .take(selectedDay)
             .toList(growable: false);
@@ -85,15 +107,13 @@ class _HomePageState extends State<HomePage> {
                     currentDay: selectedDay,
                     totalDays: totalDays,
                     onPrevious: selectedDay > 1
-                        ? () => setState(() => _selectedDay = selectedDay - 1)
+                        ? () => _setSelectedDay(selectedDay - 1)
                         : null,
                     onNext: selectedDay < totalDays
-                        ? () => setState(() => _selectedDay = selectedDay + 1)
+                        ? () => _setSelectedDay(selectedDay + 1)
                         : null,
                     onChanged: (value) {
-                      setState(
-                        () => _selectedDay = value.round().clamp(1, totalDays),
-                      );
+                      _setSelectedDay(value.round().clamp(1, totalDays));
                     },
                   ),
                   const SizedBox(height: 28),
@@ -130,6 +150,17 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  Future<_BoardData> _loadBoardData() async {
+    final results = await Future.wait<Object>(<Future<Object>>[
+      widget.repository.loadWords(),
+      widget.progressRepository.loadProgress(),
+    ]);
+    return _BoardData(
+      words: results[0] as List<VocabWord>,
+      progress: results[1] as ProgressSnapshot,
+    );
+  }
+
   List<String> _sortedGroupNames(List<VocabWord> words) {
     final groups = <String>{for (final word in words) word.group}.toList();
     groups.sort(
@@ -140,6 +171,22 @@ class _HomePageState extends State<HomePage> {
 
   int _groupNumber(String groupName) {
     return int.tryParse(groupName.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+  }
+
+  void _setSelectedDay(int day) {
+    setState(() => _selectedDay = day);
+    unawaited(widget.progressRepository.saveSelectedDay(day));
+  }
+
+  void _setWordStatus(String word, WordStatus status) {
+    setState(() {
+      if (status == WordStatus.untouched) {
+        _wordStatuses.remove(word);
+      } else {
+        _wordStatuses[word] = status;
+      }
+    });
+    unawaited(widget.progressRepository.saveWordStatus(word, status));
   }
 
   void _showWordDetails(VocabWord word) {
@@ -165,13 +212,7 @@ class _HomePageState extends State<HomePage> {
                 _StatusControls(
                   status: currentStatus,
                   onSelected: (status) {
-                    setState(() {
-                      if (status == WordStatus.untouched) {
-                        _wordStatuses.remove(word.word);
-                      } else {
-                        _wordStatuses[word.word] = status;
-                      }
-                    });
+                    _setWordStatus(word.word, status);
                     Navigator.of(context).pop();
                   },
                 ),
@@ -199,7 +240,12 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-enum WordStatus { learned, forgotten, untouched }
+class _BoardData {
+  const _BoardData({required this.words, required this.progress});
+
+  final List<VocabWord> words;
+  final ProgressSnapshot progress;
+}
 
 class _DayHeader extends StatelessWidget {
   const _DayHeader({

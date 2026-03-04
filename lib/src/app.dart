@@ -1,13 +1,20 @@
 import 'package:flutter/material.dart';
 
 import 'pages/home_page.dart';
+import 'repositories/progress_repository.dart';
 import 'repositories/vocab_repository.dart';
 
 class VocabHillApp extends StatelessWidget {
-  const VocabHillApp({super.key, VocabRepository? repository})
-    : repository = repository ?? const AssetVocabRepository();
+  const VocabHillApp({
+    super.key,
+    VocabRepository? repository,
+    ProgressRepository? progressRepository,
+  }) : repository = repository ?? const AssetVocabRepository(),
+       progressRepository =
+           progressRepository ?? const SharedPreferencesProgressRepository();
 
   final VocabRepository repository;
+  final ProgressRepository progressRepository;
 
   @override
   Widget build(BuildContext context) {
@@ -55,7 +62,10 @@ class VocabHillApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: HomePage(repository: repository),
+      home: HomePage(
+        repository: repository,
+        progressRepository: progressRepository,
+      ),
     );
   }
 }

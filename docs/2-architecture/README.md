@@ -11,7 +11,9 @@ This folder contains the current runtime structure and the records for major des
 ```mermaid
 flowchart TD
     A["data/final.json"] --> B["AssetVocabRepository"]
+    P["SharedPreferences"] --> Q["ProgressRepository"]
     B --> C["VocabHillApp"]
+    Q --> C
     C --> D["HomePage"]
     D --> E["Day Header + Slider"]
     D --> F["Visible Group Columns"]
@@ -22,5 +24,5 @@ flowchart TD
 The current scaffold is deliberately simple:
 
 - assets are the source of vocabulary content
-- the repository isolates file loading from UI rendering
-- the page state owns day selection and learned/forgotten session state
+- repositories isolate both vocab loading and progress persistence from UI rendering
+- the page state restores persisted day selection and word marks before rendering the board

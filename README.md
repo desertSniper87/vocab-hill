@@ -9,7 +9,7 @@ The starter project includes:
 - a day-based board that reveals Groups `1..N` for the selected day
 - a horizontal multi-column layout modeled on the vocab mountain view
 - per-word detail sheets for definition, Bangla meaning, and mnemonic
-- in-memory `learned` and `forgotten` tracking for the current session
+- persisted `learned` / `forgotten` marks and selected day using local device storage
 
 ## Why Flutter
 

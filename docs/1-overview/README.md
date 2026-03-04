@@ -4,8 +4,9 @@ Vocab Hill is a study tool for GregMat-style vocabulary learning.
 
 ## Current Product Shape
 
-- The app presents vocabulary in numbered groups of 30 words.
-- Users can move between groups, inspect a word's details, and mark words as learned or forgotten.
+- The app presents vocabulary in numbered groups of 30 words arranged into a day board.
+- Each day reveals all groups from `Group 1` through the selected day number, matching the vocab mountain style.
+- Users can inspect a word's details and mark words as learned or forgotten.
 - The initial scaffold keeps progress in memory and reads source data from `data/final.json`.
 
 ## Why The Repo Starts With Flutter

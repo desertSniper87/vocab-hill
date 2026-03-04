@@ -16,9 +16,8 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   late final Future<List<VocabWord>> _wordsFuture;
-  final Set<String> _learnedWords = <String>{};
-  final Set<String> _forgottenWords = <String>{};
-  int _selectedGroupIndex = 0;
+  final Map<String, WordStatus> _wordStatuses = <String, WordStatus>{};
+  int _selectedDay = 6;
 
   @override
   void initState() {
@@ -59,77 +58,71 @@ class _HomePageState extends State<HomePage> {
           );
         }
 
-        final selectedIndex = math.min(
-          _selectedGroupIndex,
-          groupNames.length - 1,
+        final totalDays = groupNames.length;
+        final selectedDay = math.min(math.max(_selectedDay, 1), totalDays);
+        final visibleGroups = groupNames
+            .take(selectedDay)
+            .toList(growable: false);
+        final groupedWords = <String, List<VocabWord>>{
+          for (final group in visibleGroups)
+            group: words
+                .where((word) => word.group == group)
+                .toList(growable: false),
+        };
+        final maxRows = groupedWords.values.fold<int>(
+          0,
+          (current, groupWords) => math.max(current, groupWords.length),
         );
-        final selectedGroup = groupNames[selectedIndex];
-        final groupWords = words
-            .where((word) => word.group == selectedGroup)
-            .toList();
-        final learnedCount = groupWords
-            .where((word) => _learnedWords.contains(word.word))
-            .length;
 
         return Scaffold(
-          body: SafeArea(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final isWide = constraints.maxWidth >= 960;
-                final content = _BodyLayout(
-                  header: _Header(
-                    selectedGroup: selectedGroup,
-                    totalGroups: groupNames.length,
-                    learnedCount: learnedCount,
-                    wordCount: groupWords.length,
-                    completedGroups: selectedIndex,
-                    onPrevious: selectedIndex == 0
-                        ? null
-                        : () => setState(
-                            () => _selectedGroupIndex = selectedIndex - 1,
-                          ),
-                    onNext: selectedIndex == groupNames.length - 1
-                        ? null
-                        : () => setState(
-                            () => _selectedGroupIndex = selectedIndex + 1,
-                          ),
-                  ),
-                  selector: _GroupSelector(
-                    groupNames: groupNames,
-                    selectedGroup: selectedGroup,
-                    onSelected: (group) {
-                      final index = groupNames.indexOf(group);
-                      if (index >= 0) {
-                        setState(() => _selectedGroupIndex = index);
-                      }
+          body: DecoratedBox(
+            decoration: const BoxDecoration(color: Color(0xFFF2F2F2)),
+            child: SafeArea(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(28, 28, 28, 40),
+                children: <Widget>[
+                  _DayHeader(
+                    currentDay: selectedDay,
+                    totalDays: totalDays,
+                    onPrevious: selectedDay > 1
+                        ? () => setState(() => _selectedDay = selectedDay - 1)
+                        : null,
+                    onNext: selectedDay < totalDays
+                        ? () => setState(() => _selectedDay = selectedDay + 1)
+                        : null,
+                    onChanged: (value) {
+                      setState(
+                        () => _selectedDay = value.round().clamp(1, totalDays),
+                      );
                     },
                   ),
-                  column: _WordColumn(
-                    groupWords: groupWords,
-                    learnedWords: _learnedWords,
-                    forgottenWords: _forgottenWords,
-                    onStatusChanged: _updateWordStatus,
-                    onWordTap: _showWordDetails,
-                  ),
-                  summary: _SummaryPanel(
-                    groupWords: groupWords,
-                    learnedWords: _learnedWords,
-                    forgottenWords: _forgottenWords,
-                  ),
-                  isWide: isWide,
-                );
-
-                return DecoratedBox(
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: <Color>[Color(0xFFFDF7ED), Color(0xFFF0E2C4)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
+                  const SizedBox(height: 28),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: visibleGroups
+                          .map((group) {
+                            final groupWords =
+                                groupedWords[group] ?? const <VocabWord>[];
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 2),
+                              child: _GroupColumn(
+                                title: group,
+                                words: groupWords,
+                                maxRows: maxRows,
+                                statusFor: (word) =>
+                                    _wordStatuses[word.word] ??
+                                    WordStatus.untouched,
+                                onWordTap: _showWordDetails,
+                              ),
+                            );
+                          })
+                          .toList(growable: false),
                     ),
                   ),
-                  child: content,
-                );
-              },
+                ],
+              ),
             ),
           ),
         );
@@ -138,14 +131,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   List<String> _sortedGroupNames(List<VocabWord> words) {
-    final seen = <String>{};
-    final groups = <String>[];
-    for (final word in words) {
-      if (seen.add(word.group)) {
-        groups.add(word.group);
-      }
-    }
-
+    final groups = <String>{for (final word in words) word.group}.toList();
     groups.sort(
       (left, right) => _groupNumber(left).compareTo(_groupNumber(right)),
     );
@@ -156,50 +142,56 @@ class _HomePageState extends State<HomePage> {
     return int.tryParse(groupName.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
   }
 
-  void _updateWordStatus(String word, WordStatus status) {
-    setState(() {
-      switch (status) {
-        case WordStatus.learned:
-          _forgottenWords.remove(word);
-          _learnedWords.add(word);
-        case WordStatus.forgotten:
-          _learnedWords.remove(word);
-          _forgottenWords.add(word);
-        case WordStatus.clear:
-          _learnedWords.remove(word);
-          _forgottenWords.remove(word);
-      }
-    });
-  }
-
   void _showWordDetails(VocabWord word) {
+    final currentStatus = _wordStatuses[word.word] ?? WordStatus.untouched;
     showModalBottomSheet<void>(
       context: context,
       useSafeArea: true,
       showDragHandle: true,
-      backgroundColor: const Color(0xFFFFFAF1),
+      backgroundColor: const Color(0xFFF7F2ED),
       builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            spacing: 16,
-            children: <Widget>[
-              Text(word.word, style: Theme.of(context).textTheme.headlineSmall),
-              _DetailSection(
-                title: 'Definition',
-                body: word.definition ?? 'Definition not added yet.',
-              ),
-              _DetailSection(
-                title: 'Bangla',
-                body: word.bangla ?? 'Bangla meaning not added yet.',
-              ),
-              _DetailSection(
-                title: 'Mnemonic',
-                body: word.mnemonic ?? 'Mnemonic not added yet.',
-              ),
-            ],
+        return SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  word.word,
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
+                const SizedBox(height: 16),
+                _StatusControls(
+                  status: currentStatus,
+                  onSelected: (status) {
+                    setState(() {
+                      if (status == WordStatus.untouched) {
+                        _wordStatuses.remove(word.word);
+                      } else {
+                        _wordStatuses[word.word] = status;
+                      }
+                    });
+                    Navigator.of(context).pop();
+                  },
+                ),
+                const SizedBox(height: 18),
+                _DetailSection(
+                  title: 'Definition',
+                  body: word.definition ?? 'Definition not added yet.',
+                ),
+                const SizedBox(height: 14),
+                _DetailSection(
+                  title: 'Bangla',
+                  body: word.bangla ?? 'Bangla meaning not added yet.',
+                ),
+                const SizedBox(height: 14),
+                _DetailSection(
+                  title: 'Mnemonic',
+                  body: word.mnemonic ?? 'Mnemonic not added yet.',
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -207,435 +199,202 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-enum WordStatus { learned, forgotten, clear }
+enum WordStatus { learned, forgotten, untouched }
 
-class _BodyLayout extends StatelessWidget {
-  const _BodyLayout({
-    required this.header,
-    required this.selector,
-    required this.column,
-    required this.summary,
-    required this.isWide,
-  });
-
-  final Widget header;
-  final Widget selector;
-  final Widget column;
-  final Widget summary;
-  final bool isWide;
-
-  @override
-  Widget build(BuildContext context) {
-    final mainColumn = ListView(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
-      children: <Widget>[
-        header,
-        const SizedBox(height: 20),
-        selector,
-        const SizedBox(height: 20),
-        if (!isWide) ...<Widget>[summary, const SizedBox(height: 20)],
-        column,
-      ],
-    );
-
-    if (!isWide) {
-      return mainColumn;
-    }
-
-    return Row(
-      children: <Widget>[
-        Expanded(flex: 3, child: mainColumn),
-        Expanded(
-          flex: 2,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(0, 20, 20, 28),
-            child: summary,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _Header extends StatelessWidget {
-  const _Header({
-    required this.selectedGroup,
-    required this.totalGroups,
-    required this.learnedCount,
-    required this.wordCount,
-    required this.completedGroups,
+class _DayHeader extends StatelessWidget {
+  const _DayHeader({
+    required this.currentDay,
+    required this.totalDays,
     required this.onPrevious,
     required this.onNext,
+    required this.onChanged,
   });
 
-  final String selectedGroup;
-  final int totalGroups;
-  final int learnedCount;
-  final int wordCount;
-  final int completedGroups;
+  final int currentDay;
+  final int totalDays;
   final VoidCallback? onPrevious;
   final VoidCallback? onNext;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1F3B2C),
-        borderRadius: BorderRadius.circular(28),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: Text(
-                  'Vocab Hill',
-                  style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                    color: const Color(0xFFF8EED8),
-                  ),
-                ),
-              ),
-              FilledButton.tonal(
-                onPressed: onPrevious,
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(
-                    0xFFF8EED8,
-                  ).withValues(alpha: 0.15),
-                ),
-                child: const Text('Previous'),
-              ),
-              const SizedBox(width: 12),
-              FilledButton(
-                onPressed: onNext,
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFFB86A42),
-                ),
-                child: const Text('Next Group'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 18),
-          Text(
-            'A Flutter-first vocab trainer with 30-word columns, quick status tracking, and room for web now and mobile later.',
-            style: Theme.of(
-              context,
-            ).textTheme.bodyLarge?.copyWith(color: const Color(0xFFF3E6CB)),
-          ),
-          const SizedBox(height: 18),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: <Widget>[
-              _StatPill(label: 'Current', value: selectedGroup),
-              _StatPill(label: 'Words', value: '$wordCount'),
-              _StatPill(label: 'Learned', value: '$learnedCount'),
-              _StatPill(
-                label: 'Finished groups',
-                value: '$completedGroups / $totalGroups',
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StatPill extends StatelessWidget {
-  const _StatPill({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: const Color(0x14FFFFFF),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: const Color(0x33FFFFFF)),
-      ),
-      child: RichText(
-        text: TextSpan(
-          children: <InlineSpan>[
-            TextSpan(
-              text: '$label: ',
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(color: const Color(0xFFE9D9BC)),
-            ),
-            TextSpan(
-              text: value,
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(color: Colors.white),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _GroupSelector extends StatelessWidget {
-  const _GroupSelector({
-    required this.groupNames,
-    required this.selectedGroup,
-    required this.onSelected,
-  });
-
-  final List<String> groupNames;
-  final String selectedGroup;
-  final ValueChanged<String> onSelected;
+  final ValueChanged<double> onChanged;
 
   @override
   Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        Text('Group Map', style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: groupNames
-              .map(
-                (group) => ChoiceChip(
-                  label: Text(group),
-                  selected: group == selectedGroup,
-                  onSelected: (_) => onSelected(group),
+        Row(
+          children: <Widget>[
+            TextButton(onPressed: onPrevious, child: const Text('Previous')),
+            Expanded(
+              child: Center(
+                child: Text(
+                  'Day $currentDay of $totalDays',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF1E1F24),
+                  ),
                 ),
-              )
-              .toList(growable: false),
+              ),
+            ),
+            TextButton(onPressed: onNext, child: const Text('Next')),
+          ],
+        ),
+        const SizedBox(height: 8),
+        SliderTheme(
+          data: SliderTheme.of(context).copyWith(
+            trackHeight: 10,
+            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
+            overlayShape: SliderComponentShape.noOverlay,
+            activeTrackColor: const Color(0xFFD3D5DB),
+            inactiveTrackColor: const Color(0xFFD3D5DB),
+            thumbColor: const Color(0xFF1A73E8),
+          ),
+          child: Slider(
+            value: currentDay.toDouble(),
+            min: 1,
+            max: totalDays.toDouble(),
+            divisions: totalDays - 1,
+            onChanged: onChanged,
+          ),
         ),
       ],
     );
   }
 }
 
-class _WordColumn extends StatelessWidget {
-  const _WordColumn({
-    required this.groupWords,
-    required this.learnedWords,
-    required this.forgottenWords,
-    required this.onStatusChanged,
+class _GroupColumn extends StatelessWidget {
+  const _GroupColumn({
+    required this.title,
+    required this.words,
+    required this.maxRows,
+    required this.statusFor,
     required this.onWordTap,
   });
 
-  final List<VocabWord> groupWords;
-  final Set<String> learnedWords;
-  final Set<String> forgottenWords;
-  final void Function(String word, WordStatus status) onStatusChanged;
+  final String title;
+  final List<VocabWord> words;
+  final int maxRows;
+  final WordStatus Function(VocabWord word) statusFor;
   final void Function(VocabWord word) onWordTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.86),
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: const Color(0xFFE6D7BA)),
-      ),
+    return SizedBox(
+      width: 205,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Text('Word Column', style: Theme.of(context).textTheme.headlineSmall),
-          const SizedBox(height: 8),
-          Text(
-            'Tap a word for details. Mark it learned or forgotten as you move through the list.',
-            style: Theme.of(context).textTheme.bodyMedium,
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 0, 18, 16),
+            child: Text(
+              title,
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF1F2330),
+              ),
+            ),
           ),
-          const SizedBox(height: 16),
-          ...groupWords.asMap().entries.map((entry) {
-            final index = entry.key;
-            final word = entry.value;
-            final isLearned = learnedWords.contains(word.word);
-            final isForgotten = forgottenWords.contains(word.word);
-            return Padding(
-              padding: EdgeInsets.only(
-                bottom: index == groupWords.length - 1 ? 0 : 12,
-              ),
-              child: _WordTile(
-                index: index + 1,
-                word: word,
-                isLearned: isLearned,
-                isForgotten: isForgotten,
-                onLearned: () => onStatusChanged(
-                  word.word,
-                  isLearned ? WordStatus.clear : WordStatus.learned,
-                ),
-                onForgotten: () => onStatusChanged(
-                  word.word,
-                  isForgotten ? WordStatus.clear : WordStatus.forgotten,
-                ),
-                onTap: () => onWordTap(word),
-              ),
-            );
-          }),
+          for (var index = 0; index < maxRows; index++)
+            _WordCell(
+              word: index < words.length ? words[index] : null,
+              status: index < words.length
+                  ? statusFor(words[index])
+                  : WordStatus.untouched,
+              onTap: index < words.length
+                  ? () => onWordTap(words[index])
+                  : null,
+            ),
         ],
       ),
     );
   }
 }
 
-class _WordTile extends StatelessWidget {
-  const _WordTile({
-    required this.index,
+class _WordCell extends StatelessWidget {
+  const _WordCell({
     required this.word,
-    required this.isLearned,
-    required this.isForgotten,
-    required this.onLearned,
-    required this.onForgotten,
+    required this.status,
     required this.onTap,
   });
 
-  final int index;
-  final VocabWord word;
-  final bool isLearned;
-  final bool isForgotten;
-  final VoidCallback onLearned;
-  final VoidCallback onForgotten;
-  final VoidCallback onTap;
+  final VocabWord? word;
+  final WordStatus status;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: Ink(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF8F2E7),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isLearned
-                ? const Color(0xFF5C8A64)
-                : isForgotten
-                ? const Color(0xFFB85C4D)
-                : const Color(0xFFE1D5C0),
-            width: 1.2,
-          ),
-        ),
-        child: Row(
-          children: <Widget>[
-            CircleAvatar(
-              backgroundColor: const Color(0xFF1F3B2C),
-              foregroundColor: Colors.white,
-              child: Text('$index'),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(
-                    word.word,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    word.definition ?? 'Tap to open the word details.',
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            IconButton.filledTonal(
-              tooltip: isLearned ? 'Clear learned' : 'Mark learned',
-              onPressed: onLearned,
-              icon: Icon(
-                isLearned ? Icons.check_circle : Icons.check_circle_outline,
-              ),
-              color: const Color(0xFF2F6A3F),
-            ),
-            const SizedBox(width: 8),
-            IconButton.filledTonal(
-              tooltip: isForgotten ? 'Clear forgotten' : 'Mark forgotten',
-              onPressed: onForgotten,
-              icon: Icon(isForgotten ? Icons.refresh : Icons.refresh_outlined),
-              color: const Color(0xFF9A433C),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
+    final background = switch (status) {
+      WordStatus.learned => const Color(0xFFB8E8C2),
+      WordStatus.forgotten => const Color(0xFFF0C5C5),
+      WordStatus.untouched => const Color(0xFFF1EEEC),
+    };
 
-class _SummaryPanel extends StatelessWidget {
-  const _SummaryPanel({
-    required this.groupWords,
-    required this.learnedWords,
-    required this.forgottenWords,
-  });
-
-  final List<VocabWord> groupWords;
-  final Set<String> learnedWords;
-  final Set<String> forgottenWords;
-
-  @override
-  Widget build(BuildContext context) {
-    final learned = groupWords
-        .where((word) => learnedWords.contains(word.word))
-        .length;
-    final forgotten = groupWords
-        .where((word) => forgottenWords.contains(word.word))
-        .length;
-    final untouched = groupWords.length - learned - forgotten;
-
-    return Container(
-      padding: const EdgeInsets.all(24),
+    final child = Container(
+      height: 36,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0xFFE9D7B1),
-        borderRadius: BorderRadius.circular(28),
+        color: word == null ? Colors.transparent : background,
+        border: Border.all(color: const Color(0xFFDAD4CF), width: 0.6),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text(
-            'Session Summary',
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          const SizedBox(height: 16),
-          _SummaryRow(label: 'Learned', value: '$learned'),
-          _SummaryRow(label: 'Forgotten', value: '$forgotten'),
-          _SummaryRow(label: 'Untouched', value: '$untouched'),
-          const SizedBox(height: 18),
-          Text(
-            'This starter project keeps progress in memory only. The next step is persisting learned and forgotten states into SQLite.',
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-        ],
-      ),
+      alignment: Alignment.centerLeft,
+      child: word == null
+          ? null
+          : Text(
+              word!.word,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                fontSize: 15,
+                color: const Color(0xFF31343D),
+              ),
+            ),
     );
+
+    if (word == null || onTap == null) {
+      return child;
+    }
+
+    return InkWell(onTap: onTap, child: child);
   }
 }
 
-class _SummaryRow extends StatelessWidget {
-  const _SummaryRow({required this.label, required this.value});
+class _StatusControls extends StatelessWidget {
+  const _StatusControls({required this.status, required this.onSelected});
 
-  final String label;
-  final String value;
+  final WordStatus status;
+  final ValueChanged<WordStatus> onSelected;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Row(
-        children: <Widget>[
-          Expanded(
-            child: Text(label, style: Theme.of(context).textTheme.bodyLarge),
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: <Widget>[
+        ChoiceChip(
+          label: const Text('Learned'),
+          selected: status == WordStatus.learned,
+          onSelected: (_) => onSelected(
+            status == WordStatus.learned
+                ? WordStatus.untouched
+                : WordStatus.learned,
           ),
-          Text(value, style: Theme.of(context).textTheme.titleMedium),
-        ],
-      ),
+          selectedColor: const Color(0xFFB8E8C2),
+        ),
+        ChoiceChip(
+          label: const Text('Forgotten'),
+          selected: status == WordStatus.forgotten,
+          onSelected: (_) => onSelected(
+            status == WordStatus.forgotten
+                ? WordStatus.untouched
+                : WordStatus.forgotten,
+          ),
+          selectedColor: const Color(0xFFF0C5C5),
+        ),
+        ChoiceChip(
+          label: const Text('Clear'),
+          selected: status == WordStatus.untouched,
+          onSelected: (_) => onSelected(WordStatus.untouched),
+        ),
+      ],
     );
   }
 }

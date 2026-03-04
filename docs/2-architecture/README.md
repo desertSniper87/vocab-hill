@@ -13,14 +13,14 @@ flowchart TD
     A["data/final.json"] --> B["AssetVocabRepository"]
     B --> C["VocabHillApp"]
     C --> D["HomePage"]
-    D --> E["Group Selector"]
-    D --> F["Word Column"]
-    D --> G["Session Summary"]
-    F --> H["Word Detail Bottom Sheet"]
+    D --> E["Day Header + Slider"]
+    D --> F["Visible Group Columns"]
+    F --> G["Word Cells"]
+    G --> H["Word Detail Bottom Sheet"]
 ```
 
 The current scaffold is deliberately simple:
 
 - assets are the source of vocabulary content
 - the repository isolates file loading from UI rendering
-- the page state owns group selection and learned/forgotten session state
+- the page state owns day selection and learned/forgotten session state

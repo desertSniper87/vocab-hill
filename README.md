@@ -6,7 +6,8 @@ The starter project includes:
 
 - a single Flutter codebase positioned for web now and mobile later
 - loading vocabulary records from `data/final.json`
-- group navigation with `Previous` and `Next Group`
+- a day-based board that reveals Groups `1..N` for the selected day
+- a horizontal multi-column layout modeled on the vocab mountain view
 - per-word detail sheets for definition, Bangla meaning, and mnemonic
 - in-memory `learned` and `forgotten` tracking for the current session
 

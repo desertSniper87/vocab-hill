@@ -12,6 +12,7 @@ The starter project includes:
 - keyboard control: arrows move, `d` toggles details, `g` marks remembered, `r` marks forgotten
 - per-word detail sheets for definition, Bangla meaning, and mnemonic
 - persisted per-day `learned` / `forgotten` marks and selected day using SQLite-backed local storage
+- optional cross-browser sync through a small Dart backend plus a shared sync key
 
 ## Why Flutter
 
@@ -24,10 +25,16 @@ flutter pub get
 flutter run
 ```
 
+To run local cross-browser sync:
+
+```bash
+dart run bin/sync_server.dart
+```
+
 ## Current Scope
 
 This scaffold is intentionally narrow:
 
 - SQLite persistence is wired for learner progress and selected day
-- auth/login is not wired yet
+- sync can work across browsers with a shared sync key, but auth/login is not wired yet
 - Flutter web support is configured and the project builds for the browser target

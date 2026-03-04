@@ -1,9 +1,41 @@
 # API
 
-There is no network API yet.
+The project now has a minimal sync API for cross-browser learner progress.
 
 ## Current Boundary
 
-- `AssetVocabRepository` is the current data boundary inside the app.
-- `ProgressRepository` is the current learner-state boundary inside the app and is backed by SQLite.
-- A future remote sync layer should sit behind these repository contracts instead of being called directly from widgets.
+- `AssetVocabRepository` remains the vocabulary content boundary inside the app.
+- `ProgressRepository` remains the learner-state boundary inside the app and now hides both local SQLite and optional remote sync from widgets.
+- The sync transport is intentionally narrow and only handles learner progress, not vocab content.
+
+## HTTP Endpoints
+
+- `GET /health`
+  - returns a simple health payload for local verification
+- `GET /api/progress/:syncKey`
+  - returns the canonical remote snapshot for one learner key
+- `POST /api/progress/:syncKey/merge`
+  - accepts a full local snapshot and returns the merged server snapshot
+
+## Snapshot Shape
+
+```json
+{
+  "selectedDay": 6,
+  "selectedDayUpdatedAt": "2026-03-04T10:15:00.000Z",
+  "statuses": [
+    {
+      "day": 6,
+      "word": "abound",
+      "status": "learned",
+      "updatedAt": "2026-03-04T10:16:00.000Z"
+    }
+  ]
+}
+```
+
+The merge contract is timestamp-based:
+
+- `selectedDayUpdatedAt` decides whether the incoming selected day replaces the server value
+- each `statuses` record is merged independently by `updatedAt`
+- `status: "untouched"` acts as a tombstone so clearing a mark also syncs across browsers

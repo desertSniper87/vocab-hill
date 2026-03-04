@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../models/progress_snapshot.dart';
+import '../models/sync_settings.dart';
 import '../models/vocab_word.dart';
 import '../models/word_status.dart';
 import '../repositories/progress_repository.dart';
@@ -30,6 +31,7 @@ class _HomePageState extends State<HomePage> {
       <int, Map<String, WordStatus>>{};
   final FocusNode _boardFocusNode = FocusNode(debugLabel: 'boardFocus');
   int? _selectedDay;
+  SyncSettings _syncSettings = SyncSettings.empty;
   int _selectedColumnIndex = 0;
   int _selectedRowIndex = 0;
   bool _detailsOpen = false;
@@ -86,6 +88,7 @@ class _HomePageState extends State<HomePage> {
             ..clear()
             ..addAll(boardData.progress.wordStatusesByDay);
           _selectedDay = boardData.progress.selectedDay;
+          _syncSettings = boardData.syncSettings;
           _restoredProgress = true;
         }
 
@@ -134,6 +137,7 @@ class _HomePageState extends State<HomePage> {
                         _DayHeader(
                           currentDay: selectedDay,
                           totalDays: totalDays,
+                          syncSettings: _syncSettings,
                           onPrevious: selectedDay > 1
                               ? () => _setSelectedDay(selectedDay - 1)
                               : null,
@@ -143,6 +147,7 @@ class _HomePageState extends State<HomePage> {
                           onChanged: (value) {
                             _setSelectedDay(value.round().clamp(1, totalDays));
                           },
+                          onSyncPressed: _openSyncSettingsDialog,
                         ),
                         const SizedBox(height: 16),
                         SingleChildScrollView(
@@ -243,11 +248,52 @@ class _HomePageState extends State<HomePage> {
     final results = await Future.wait<Object>(<Future<Object>>[
       widget.repository.loadWords(),
       widget.progressRepository.loadProgress(),
+      widget.progressRepository.loadSyncSettings(),
     ]);
     return _BoardData(
       words: results[0] as List<VocabWord>,
       progress: results[1] as ProgressSnapshot,
+      syncSettings: results[2] as SyncSettings,
     );
+  }
+
+  Future<void> _openSyncSettingsDialog() async {
+    final settings = await showDialog<SyncSettings>(
+      context: context,
+      builder: (context) => _SyncSettingsDialog(initialSettings: _syncSettings),
+    );
+    if (settings == null || !mounted) {
+      return;
+    }
+
+    await widget.progressRepository.saveSyncSettings(settings);
+    setState(() => _syncSettings = settings);
+    if (!settings.isConfigured) {
+      return;
+    }
+
+    try {
+      final progress = await widget.progressRepository.syncNow();
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _wordStatusesByDay
+          ..clear()
+          ..addAll(progress.wordStatusesByDay);
+        _selectedDay = progress.selectedDay ?? _selectedDay;
+      });
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Sync completed.')));
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Sync failed: $error')));
+    }
   }
 
   List<String> _sortedGroupNames(List<VocabWord> words) {
@@ -417,26 +463,35 @@ class _HomePageState extends State<HomePage> {
 }
 
 class _BoardData {
-  const _BoardData({required this.words, required this.progress});
+  const _BoardData({
+    required this.words,
+    required this.progress,
+    required this.syncSettings,
+  });
 
   final List<VocabWord> words;
   final ProgressSnapshot progress;
+  final SyncSettings syncSettings;
 }
 
 class _DayHeader extends StatelessWidget {
   const _DayHeader({
     required this.currentDay,
     required this.totalDays,
+    required this.syncSettings,
     required this.onPrevious,
     required this.onNext,
     required this.onChanged,
+    required this.onSyncPressed,
   });
 
   final int currentDay;
   final int totalDays;
+  final SyncSettings syncSettings;
   final VoidCallback? onPrevious;
   final VoidCallback? onNext;
   final ValueChanged<double> onChanged;
+  final VoidCallback onSyncPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -457,7 +512,23 @@ class _DayHeader extends StatelessWidget {
                 ),
               ),
             ),
-            TextButton(onPressed: onNext, child: const Text('Next')),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                OutlinedButton.icon(
+                  onPressed: onSyncPressed,
+                  icon: Icon(
+                    syncSettings.isConfigured ? Icons.cloud_done : Icons.cloud,
+                    size: 18,
+                  ),
+                  label: Text(
+                    syncSettings.isConfigured ? 'Sync Ready' : 'Set Sync',
+                  ),
+                ),
+                const SizedBox(width: 8),
+                TextButton(onPressed: onNext, child: const Text('Next')),
+              ],
+            ),
           ],
         ),
         const SizedBox(height: 8),
@@ -477,6 +548,87 @@ class _DayHeader extends StatelessWidget {
             divisions: totalDays - 1,
             onChanged: onChanged,
           ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SyncSettingsDialog extends StatefulWidget {
+  const _SyncSettingsDialog({required this.initialSettings});
+
+  final SyncSettings initialSettings;
+
+  @override
+  State<_SyncSettingsDialog> createState() => _SyncSettingsDialogState();
+}
+
+class _SyncSettingsDialogState extends State<_SyncSettingsDialog> {
+  late final TextEditingController _serverController = TextEditingController(
+    text: widget.initialSettings.serverUrl,
+  );
+  late final TextEditingController _keyController = TextEditingController(
+    text: widget.initialSettings.syncKey,
+  );
+
+  @override
+  void dispose() {
+    _serverController.dispose();
+    _keyController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Sync Settings'),
+      content: SizedBox(
+        width: 460,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            const Text(
+              'Use the same sync key in multiple browsers to share progress.',
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              key: const Key('sync-server-field'),
+              controller: _serverController,
+              decoration: const InputDecoration(
+                labelText: 'Server URL',
+                hintText: 'http://localhost:8080',
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              key: const Key('sync-key-field'),
+              controller: _keyController,
+              decoration: const InputDecoration(
+                labelText: 'Sync key',
+                hintText: 'your-shared-progress-key',
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: <Widget>[
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () {
+            Navigator.of(context).pop(
+              SyncSettings(
+                serverUrl: _serverController.text.trim().isEmpty
+                    ? SyncSettings.defaultServerUrl
+                    : _serverController.text.trim(),
+                syncKey: _keyController.text.trim(),
+              ),
+            );
+          },
+          child: const Text('Save'),
         ),
       ],
     );

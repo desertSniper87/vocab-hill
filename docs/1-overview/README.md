@@ -8,7 +8,7 @@ Vocab Hill is a study tool for GregMat-style vocabulary learning.
 - Each day reveals all groups from `Group 1` through the selected day number, matching the vocab mountain style.
 - Users can inspect a word's details and mark words as learned or forgotten for the currently selected day.
 - Cells can also show a small right-side marker indicating the most recent earlier-day result for that same word.
-- The current scaffold reads source data from `data/final.json` and persists learner progress locally on the device with day-scoped status entries.
+- The current scaffold reads source data from `data/final.json`, persists learner progress locally on the device with day-scoped status entries, and can optionally sync that progress through a small backend by using a shared sync key.
 
 ## Why The Repo Starts With Flutter
 

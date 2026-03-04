@@ -11,7 +11,11 @@ This folder contains the current runtime structure and the records for major des
 ```mermaid
 flowchart TD
     A["data/final.json"] --> B["AssetVocabRepository"]
-    P["SQLite progress DB"] --> Q["SqliteProgressRepository"]
+    P["Local SQLite progress DB"] --> Q["SqliteProgressRepository"]
+    R["Manual sync settings"] --> Q
+    S["Dart sync server"] --> T["Server-side SQLite sync DB"]
+    Q --> U["ProgressSyncClient"]
+    U --> S
     B --> C["VocabHillApp"]
     Q --> C
     C --> D["HomePage"]
@@ -24,5 +28,6 @@ flowchart TD
 The current scaffold is deliberately simple:
 
 - assets are the source of vocabulary content
-- repositories isolate both vocab loading and progress persistence from UI rendering
-- the page state restores persisted day selection and day-specific word marks from SQLite before rendering the board
+- repositories isolate vocab loading, local persistence, and optional remote sync from UI rendering
+- the page state restores persisted day selection and day-specific word marks from local SQLite before rendering the board
+- cross-browser sync is optional and currently uses a manual sync key plus a small Dart backend

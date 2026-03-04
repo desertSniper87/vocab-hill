@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:vocab_hill/src/app.dart';
 import 'package:vocab_hill/src/models/progress_snapshot.dart';
+import 'package:vocab_hill/src/models/sync_settings.dart';
 import 'package:vocab_hill/src/models/vocab_word.dart';
 import 'package:vocab_hill/src/models/word_status.dart';
 import 'package:vocab_hill/src/repositories/progress_repository.dart';
@@ -108,6 +109,39 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Definition'), findsNothing);
   });
+
+  testWidgets('stores sync settings from the header dialog', (tester) async {
+    final progressRepository = FakeProgressRepository(
+      snapshot: const ProgressSnapshot(
+        selectedDay: 1,
+        wordStatusesByDay: <int, Map<String, WordStatus>>{},
+      ),
+    );
+
+    await tester.pumpWidget(
+      VocabHillApp(
+        repository: FakeVocabRepository(),
+        progressRepository: progressRepository,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Set Sync'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('sync-server-field')),
+      'http://localhost:8080',
+    );
+    await tester.enterText(find.byKey(const Key('sync-key-field')), 'demo-key');
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+
+    expect(
+      progressRepository.savedSyncSettings?.serverUrl,
+      'http://localhost:8080',
+    );
+    expect(progressRepository.savedSyncSettings?.syncKey, 'demo-key');
+  });
 }
 
 class FakeVocabRepository implements VocabRepository {
@@ -143,9 +177,11 @@ class FakeProgressRepository implements ProgressRepository {
   FakeProgressRepository({required this.snapshot});
 
   final ProgressSnapshot snapshot;
+  SyncSettings syncSettings = SyncSettings.empty;
   final Map<int, Map<String, WordStatus>> savedStatuses =
       <int, Map<String, WordStatus>>{};
   final List<int> savedSelectedDays = <int>[];
+  SyncSettings? savedSyncSettings;
 
   @override
   Future<ProgressSnapshot> loadProgress() async => snapshot;
@@ -163,4 +199,16 @@ class FakeProgressRepository implements ProgressRepository {
     );
     dayStatuses[word] = status;
   }
+
+  @override
+  Future<SyncSettings> loadSyncSettings() async => syncSettings;
+
+  @override
+  Future<void> saveSyncSettings(SyncSettings settings) async {
+    syncSettings = settings;
+    savedSyncSettings = settings;
+  }
+
+  @override
+  Future<ProgressSnapshot> syncNow() async => snapshot;
 }

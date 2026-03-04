@@ -7,45 +7,57 @@ This section records the small but important implementation decisions in the cur
 ```mermaid
 flowchart TD
     A["Load data/final.json"] --> B["Parse JSON records"]
-    P["Load saved progress"] --> C["Merge vocab data with saved board state"]
+    P["Load local saved progress"] --> C["Optionally merge local SQLite with sync backend"]
+    C --> D["Merge vocab data with saved board state"]
     B --> C
-    C --> D["Extract and sort unique groups"]
-    D --> E["Clamp selected day to available groups"]
-    E --> F["Take Groups 1..N for the day board"]
-    F --> G["Render horizontal group columns"]
-    G --> H["Track one selected cell for keyboard control"]
-    H --> I["Open bottom sheet or update status from shortcuts"]
-    I --> J["Persist selected day and word status updates"]
+    D --> E["Extract and sort unique groups"]
+    E --> F["Clamp selected day to available groups"]
+    F --> G["Take Groups 1..N for the day board"]
+    G --> H["Render horizontal group columns"]
+    H --> I["Track one selected cell for keyboard control"]
+    I --> J["Open detail panel or update status from shortcuts"]
+    J --> K["Persist selected day and word status updates"]
+    K --> L["Best-effort sync back to the server if configured"]
 ```
 
 ## Code References
 
 `lib/src/repositories/vocab_repository.dart:L15-L22` — `AssetVocabRepository.loadWords` — loads the local JSON asset through Flutter's bundle API so the first scaffold can run without a database.
 
-`lib/src/repositories/progress_repository.dart:L31-L68` — `SqliteProgressRepository.loadProgress` — restores selected day and per-day word states from SQLite so the same word can be classified independently on later study days.
+`lib/src/repositories/progress_repository.dart:L29-L50` — `SqliteProgressRepository.loadProgress` — restores selected day and per-day word states from SQLite and performs optional startup sync so the same learner can resume in another browser.
 
-`lib/src/repositories/progress_repository.dart:L100-L127` — `SqliteProgressRepository._openDatabase` — creates the local database and required tables before the UI uses progress data, because selected day and per-day word states now live in SQLite instead of key-value storage.
+`lib/src/repositories/progress_repository.dart:L83-L105` — `SqliteProgressRepository.saveSyncSettings` — stores the server URL and manual sync key in local SQLite so the learner can point multiple browsers at the same remote progress identity.
 
-`lib/src/repositories/progress_repository.dart:L155-L231` — `SqliteProgressRepository._migrateLegacyPreferencesIfNeeded` — imports older `SharedPreferences` progress into SQLite once so existing local learner data survives the repository migration.
+`lib/src/repositories/progress_repository.dart:L107-L146` — `SqliteProgressRepository._openDatabase` — creates and upgrades the local database before the UI uses progress data, because selected day, sync settings, and timestamped per-day word states all live in SQLite now.
 
-`lib/src/pages/home_page.dart:L51-L233` — `_HomePageState.build` — converts vocab data plus restored progress into a day board that reveals groups `1..N`, applies only the current day's marks, and attaches keyboard focus because the reference UI benefits from fast, spreadsheet-like movement.
+`lib/src/repositories/progress_repository.dart:L173-L250` — `SqliteProgressRepository._migrateLegacyPreferencesIfNeeded` — imports older `SharedPreferences` progress into SQLite once so existing local learner data survives the repository migration.
 
-`lib/src/pages/home_page.dart:L237-L246` — `_HomePageState._loadBoardData` — hydrates the screen from both repositories together so the board is rendered with consistent word content and saved learner state.
+`lib/src/repositories/progress_repository.dart:L349-L371` — `SqliteProgressRepository._synchronizeIfConfigured` — serializes best-effort remote merge calls so startup sync and write-triggered sync do not race each other.
 
-`lib/src/pages/home_page.dart:L248-L258` — `_HomePageState._sortedGroupNames` — preserves group identity while sorting numerically so `Group 10` does not appear before `Group 2`.
+`lib/src/repositories/progress_repository.dart:L378-L409` — `SqliteProgressRepository._readSyncPayload` — converts local SQLite rows into a timestamped sync payload so the server can merge selected day changes, status updates, and clears across browsers.
 
-`lib/src/pages/home_page.dart:L260-L283` — `_HomePageState._clampSelection` — keeps the active keyboard cell inside the currently visible board so selection remains valid when the visible day range changes.
+`lib/src/repositories/progress_sync_client.dart:L75-L108` — `ProgressSyncClient.mergeSnapshot` — sends the entire local learner snapshot to the backend merge endpoint so the app can stay offline-first and still reconcile state remotely.
 
-`lib/src/pages/home_page.dart:L285-L306` — `_HomePageState._setWordStatus` — writes status against the current day so moving to a later day does not overwrite the earlier day's classification of the same word.
+`bin/sync_server.dart:L20-L37` — `main` — exposes the minimal HTTP surface needed for health checks, snapshot reads, and merge writes without pulling in a heavier backend stack.
 
-`lib/src/pages/home_page.dart:L308-L316` — `_HomePageState._latestPreviousStatus` — walks backward through earlier days so each cell can show the most recent prior-day marker without mixing it into the current day's main status color.
+`bin/sync_server.dart:L152-L233` — `_mergeSnapshot` — applies timestamp-based last-write-wins merges on the server so two browsers can reconcile selected day changes and per-word status updates through one SQLite database.
 
-`lib/src/pages/home_page.dart:L318-L384` — `_HomePageState._handleBoardKeyEvent` — maps arrows and `d` / `g` / `r` onto the selected cell so learners can move, toggle the details panel, and classify words without leaving the keyboard.
+`lib/src/pages/home_page.dart:L52-L245` — `_HomePageState.build` — converts vocab data plus restored progress into a day board that reveals groups `1..N`, applies only the current day's marks, and attaches keyboard focus because the reference UI benefits from fast, spreadsheet-like movement.
 
-`lib/src/pages/home_page.dart:L124-L232` — `_HomePageState.build` — keeps the details panel inside the board screen instead of opening a modal route so keyboard navigation continues to work while details are visible.
+`lib/src/pages/home_page.dart:L247-L257` — `_HomePageState._loadBoardData` — hydrates the screen from vocab, progress, and sync settings together so the board and sync controls render consistently on first paint.
 
-`lib/src/pages/home_page.dart:L393-L450` — `_DayHeader.build` — ties the displayed day label and slider to the selected cumulative board because day navigation is now the primary control in the interface.
+`lib/src/pages/home_page.dart:L260-L297` — `_HomePageState._openSyncSettingsDialog` — saves the server URL and sync key from the header dialog and then pulls merged remote state so another browser can resume the same learner progress immediately.
 
-`lib/src/pages/home_page.dart:L455-L510` — `_GroupColumn.build` — renders each group as a fixed-width vertical strip and passes both current-day status and previous-day marker data into each cell.
+`lib/src/pages/home_page.dart:L311-L333` — `_HomePageState._clampSelection` — keeps the active keyboard cell inside the currently visible board so selection remains valid when the visible day range changes.
 
-`lib/src/pages/home_page.dart:L513-L570` — `_WordCell.build` — maps current-day status to cell background and the latest prior-day status to a small right-side circle so both today’s result and historical context are visible at once.
+`lib/src/pages/home_page.dart:L336-L357` — `_HomePageState._setSelectedDay` — writes the current day locally and triggers best-effort remote sync so day navigation stays resumable across browsers when sync is configured.
+
+`lib/src/pages/home_page.dart:L359-L367` — `_HomePageState._latestPreviousStatus` — walks backward through earlier days so each cell can show the most recent prior-day marker without mixing it into the current day's main status color.
+
+`lib/src/pages/home_page.dart:L369-L435` — `_HomePageState._handleBoardKeyEvent` — maps arrows and `d` / `g` / `r` onto the selected cell so learners can move, toggle the details panel, and classify words without leaving the keyboard.
+
+`lib/src/pages/home_page.dart:L496-L554` — `_DayHeader.build` — ties the displayed day label and slider to the selected cumulative board and exposes sync settings because day navigation and sync setup now both live in the page header.
+
+`lib/src/pages/home_page.dart:L657-L692` — `_GroupColumn.build` — renders each group as a fixed-width vertical strip and passes both current-day status and previous-day marker data into each cell.
+
+`lib/src/pages/home_page.dart:L710-L765` — `_WordCell.build` — maps current-day status to cell background and the latest prior-day status to a small right-side circle so both today’s result and historical context are visible at once.

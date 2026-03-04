@@ -171,6 +171,11 @@ class _HomePageState extends State<HomePage> {
                                       statusFor: (word) =>
                                           currentDayStatuses[word.word] ??
                                           WordStatus.untouched,
+                                      previousStatusFor: (word) =>
+                                          _latestPreviousStatus(
+                                            selectedDay,
+                                            word.word,
+                                          ),
                                       onWordTap: (word, rowIndex) {
                                         setState(() {
                                           _selectedColumnIndex = groupIndex;
@@ -303,6 +308,17 @@ class _HomePageState extends State<HomePage> {
       }
     });
     unawaited(widget.progressRepository.saveWordStatus(day, word, status));
+  }
+
+  WordStatus? _latestPreviousStatus(int selectedDay, String word) {
+    for (var day = selectedDay - 1; day >= 1; day--) {
+      final dayStatuses = _wordStatusesByDay[day];
+      final status = dayStatuses?[word];
+      if (status != null && status != WordStatus.untouched) {
+        return status;
+      }
+    }
+    return null;
   }
 
   KeyEventResult _handleBoardKeyEvent(
@@ -474,6 +490,7 @@ class _GroupColumn extends StatelessWidget {
     required this.maxRows,
     required this.selectedRowIndex,
     required this.statusFor,
+    required this.previousStatusFor,
     required this.onWordTap,
   });
 
@@ -482,6 +499,7 @@ class _GroupColumn extends StatelessWidget {
   final int maxRows;
   final int? selectedRowIndex;
   final WordStatus Function(VocabWord word) statusFor;
+  final WordStatus? Function(VocabWord word) previousStatusFor;
   final void Function(VocabWord word, int rowIndex) onWordTap;
 
   @override
@@ -506,6 +524,9 @@ class _GroupColumn extends StatelessWidget {
             _WordCell(
               word: index < words.length ? words[index] : null,
               isSelected: selectedRowIndex == index,
+              previousStatus: index < words.length
+                  ? previousStatusFor(words[index])
+                  : null,
               status: index < words.length
                   ? statusFor(words[index])
                   : WordStatus.untouched,
@@ -523,12 +544,14 @@ class _WordCell extends StatelessWidget {
   const _WordCell({
     required this.word,
     required this.isSelected,
+    required this.previousStatus,
     required this.status,
     required this.onTap,
   });
 
   final VocabWord? word;
   final bool isSelected;
+  final WordStatus? previousStatus;
   final WordStatus status;
   final VoidCallback? onTap;
 
@@ -553,13 +576,32 @@ class _WordCell extends StatelessWidget {
       alignment: Alignment.centerLeft,
       child: word == null
           ? null
-          : Text(
-              word!.word,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                fontSize: 15,
-                color: const Color(0xFF31343D),
-              ),
+          : Row(
+              children: <Widget>[
+                Expanded(
+                  child: Text(
+                    word!.word,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      fontSize: 15,
+                      color: const Color(0xFF31343D),
+                    ),
+                  ),
+                ),
+                if (previousStatus != null)
+                  Container(
+                    key: Key('previous-status-${word!.word}'),
+                    width: 10,
+                    height: 10,
+                    margin: const EdgeInsets.only(left: 8),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: previousStatus == WordStatus.learned
+                          ? const Color(0xFF2E8B57)
+                          : const Color(0xFFC24B43),
+                    ),
+                  ),
+              ],
             ),
     );
 

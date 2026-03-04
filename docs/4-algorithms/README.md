@@ -34,12 +34,14 @@ flowchart TD
 
 `lib/src/pages/home_page.dart:L285-L306` — `_HomePageState._setWordStatus` — writes status against the current day so moving to a later day does not overwrite the earlier day's classification of the same word.
 
-`lib/src/pages/home_page.dart:L308-L374` — `_HomePageState._handleBoardKeyEvent` — maps arrows and `d` / `g` / `r` onto the selected cell so learners can move, toggle the details panel, and classify words without leaving the keyboard.
+`lib/src/pages/home_page.dart:L308-L316` — `_HomePageState._latestPreviousStatus` — walks backward through earlier days so each cell can show the most recent prior-day marker without mixing it into the current day's main status color.
+
+`lib/src/pages/home_page.dart:L318-L384` — `_HomePageState._handleBoardKeyEvent` — maps arrows and `d` / `g` / `r` onto the selected cell so learners can move, toggle the details panel, and classify words without leaving the keyboard.
 
 `lib/src/pages/home_page.dart:L124-L232` — `_HomePageState.build` — keeps the details panel inside the board screen instead of opening a modal route so keyboard navigation continues to work while details are visible.
 
 `lib/src/pages/home_page.dart:L393-L450` — `_DayHeader.build` — ties the displayed day label and slider to the selected cumulative board because day navigation is now the primary control in the interface.
 
-`lib/src/pages/home_page.dart:L453-L502` — `_GroupColumn.build` — renders each group as a fixed-width vertical strip so multiple groups can sit side by side like the reference layout.
+`lib/src/pages/home_page.dart:L455-L510` — `_GroupColumn.build` — renders each group as a fixed-width vertical strip and passes both current-day status and previous-day marker data into each cell.
 
-`lib/src/pages/home_page.dart:L505-L551` — `_WordCell.build` — maps persisted study state and keyboard selection to the cell border so the board can communicate both progress and active cursor position without extra inline controls.
+`lib/src/pages/home_page.dart:L513-L570` — `_WordCell.build` — maps current-day status to cell background and the latest prior-day status to a small right-side circle so both today’s result and historical context are visible at once.

@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:vocab_hill/src/app.dart';
 import 'package:vocab_hill/src/models/progress_snapshot.dart';
 import 'package:vocab_hill/src/models/vocab_word.dart';
@@ -13,6 +14,7 @@ void main() {
       snapshot: const ProgressSnapshot(
         selectedDay: 3,
         wordStatusesByDay: <int, Map<String, WordStatus>>{
+          2: <String, WordStatus>{'abound': WordStatus.learned},
           3: <String, WordStatus>{'abound': WordStatus.learned},
         },
       ),
@@ -37,6 +39,7 @@ void main() {
 
     expect(find.text('Definition'), findsOneWidget);
     expect(find.text('To exist in large quantities.'), findsOneWidget);
+    expect(find.byKey(const Key('previous-status-abound')), findsOneWidget);
 
     expect(progressRepository.savedSelectedDays, isEmpty);
   });

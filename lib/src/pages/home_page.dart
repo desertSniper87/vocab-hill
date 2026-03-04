@@ -606,6 +606,8 @@ class _DetailsPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final viewportHeight = MediaQuery.sizeOf(context).height;
+
     return Material(
       color: Colors.transparent,
       child: Container(
@@ -629,7 +631,11 @@ class _DetailsPanel extends StatelessWidget {
           ],
         ),
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 860, maxHeight: 300),
+          constraints: BoxConstraints(
+            maxWidth: 860,
+            minHeight: viewportHeight - 120,
+            maxHeight: viewportHeight - 40,
+          ),
           child: SingleChildScrollView(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(24, 18, 24, 24),

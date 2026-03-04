@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/services.dart';
 import 'package:vocab_hill/src/app.dart';
 import 'package:vocab_hill/src/models/progress_snapshot.dart';
 import 'package:vocab_hill/src/models/vocab_word.dart';
@@ -60,6 +61,44 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(progressRepository.savedStatuses['abound'], WordStatus.learned);
+  });
+
+  testWidgets('supports keyboard navigation and shortcuts', (tester) async {
+    final progressRepository = FakeProgressRepository(
+      snapshot: const ProgressSnapshot(
+        selectedDay: 3,
+        wordStatuses: <String, WordStatus>{},
+      ),
+    );
+
+    await tester.pumpWidget(
+      VocabHillApp(
+        repository: FakeVocabRepository(),
+        progressRepository: progressRepository,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyR);
+    await tester.pump();
+
+    expect(
+      progressRepository.savedStatuses['adulterate'],
+      WordStatus.forgotten,
+    );
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyG);
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyD);
+    await tester.pumpAndSettle();
+
+    expect(progressRepository.savedStatuses['abound'], WordStatus.learned);
+    expect(find.text('Definition'), findsOneWidget);
+    expect(find.text('To exist in large quantities.'), findsOneWidget);
   });
 }
 

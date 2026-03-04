@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../models/progress_snapshot.dart';
 import '../models/vocab_word.dart';
@@ -26,13 +27,22 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   late final Future<_BoardData> _boardDataFuture;
   final Map<String, WordStatus> _wordStatuses = <String, WordStatus>{};
+  final FocusNode _boardFocusNode = FocusNode(debugLabel: 'boardFocus');
   int? _selectedDay;
+  int _selectedColumnIndex = 0;
+  int _selectedRowIndex = 0;
   bool _restoredProgress = false;
 
   @override
   void initState() {
     super.initState();
     _boardDataFuture = _loadBoardData();
+  }
+
+  @override
+  void dispose() {
+    _boardFocusNode.dispose();
+    super.dispose();
   }
 
   @override
@@ -91,6 +101,7 @@ class _HomePageState extends State<HomePage> {
                 .where((word) => word.group == group)
                 .toList(growable: false),
         };
+        _clampSelection(visibleGroups, groupedWords);
         final maxRows = groupedWords.values.fold<int>(
           0,
           (current, groupWords) => math.max(current, groupWords.length),
@@ -100,48 +111,77 @@ class _HomePageState extends State<HomePage> {
           body: DecoratedBox(
             decoration: const BoxDecoration(color: Color(0xFFF2F2F2)),
             child: SafeArea(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(28, 28, 28, 40),
-                children: <Widget>[
-                  _DayHeader(
-                    currentDay: selectedDay,
-                    totalDays: totalDays,
-                    onPrevious: selectedDay > 1
-                        ? () => _setSelectedDay(selectedDay - 1)
-                        : null,
-                    onNext: selectedDay < totalDays
-                        ? () => _setSelectedDay(selectedDay + 1)
-                        : null,
-                    onChanged: (value) {
-                      _setSelectedDay(value.round().clamp(1, totalDays));
-                    },
-                  ),
-                  const SizedBox(height: 28),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: visibleGroups
-                          .map((group) {
-                            final groupWords =
-                                groupedWords[group] ?? const <VocabWord>[];
-                            return Padding(
-                              padding: const EdgeInsets.only(right: 2),
-                              child: _GroupColumn(
-                                title: group,
-                                words: groupWords,
-                                maxRows: maxRows,
-                                statusFor: (word) =>
-                                    _wordStatuses[word.word] ??
-                                    WordStatus.untouched,
-                                onWordTap: _showWordDetails,
-                              ),
-                            );
-                          })
-                          .toList(growable: false),
+              child: Focus(
+                autofocus: true,
+                focusNode: _boardFocusNode,
+                onKeyEvent: (node, event) =>
+                    _handleBoardKeyEvent(event, visibleGroups, groupedWords),
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(28, 28, 28, 40),
+                  children: <Widget>[
+                    _DayHeader(
+                      currentDay: selectedDay,
+                      totalDays: totalDays,
+                      onPrevious: selectedDay > 1
+                          ? () => _setSelectedDay(selectedDay - 1)
+                          : null,
+                      onNext: selectedDay < totalDays
+                          ? () => _setSelectedDay(selectedDay + 1)
+                          : null,
+                      onChanged: (value) {
+                        _setSelectedDay(value.round().clamp(1, totalDays));
+                      },
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 12),
+                    Text(
+                      'Keyboard: arrows move, D opens details, G marks remembered, R marks forgotten.',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: const Color(0xFF5A5D66),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: visibleGroups
+                            .asMap()
+                            .entries
+                            .map((entry) {
+                              final groupIndex = entry.key;
+                              final group = entry.value;
+                              final groupWords =
+                                  groupedWords[group] ?? const <VocabWord>[];
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 2),
+                                child: _GroupColumn(
+                                  title: group,
+                                  words: groupWords,
+                                  maxRows: maxRows,
+                                  selectedRowIndex:
+                                      _selectedColumnIndex == groupIndex
+                                      ? _selectedRowIndex
+                                      : null,
+                                  statusFor: (word) =>
+                                      _wordStatuses[word.word] ??
+                                      WordStatus.untouched,
+                                  onWordTap: (word, rowIndex) {
+                                    setState(() {
+                                      _selectedColumnIndex = groupIndex;
+                                      _selectedRowIndex = rowIndex;
+                                    });
+                                    _boardFocusNode.requestFocus();
+                                    _showWordDetails(word);
+                                  },
+                                ),
+                              );
+                            })
+                            .toList(growable: false),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -173,6 +213,31 @@ class _HomePageState extends State<HomePage> {
     return int.tryParse(groupName.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
   }
 
+  void _clampSelection(
+    List<String> visibleGroups,
+    Map<String, List<VocabWord>> groupedWords,
+  ) {
+    if (visibleGroups.isEmpty) {
+      _selectedColumnIndex = 0;
+      _selectedRowIndex = 0;
+      return;
+    }
+
+    _selectedColumnIndex = _selectedColumnIndex.clamp(
+      0,
+      visibleGroups.length - 1,
+    );
+    final currentWords =
+        groupedWords[visibleGroups[_selectedColumnIndex]] ??
+        const <VocabWord>[];
+    if (currentWords.isEmpty) {
+      _selectedRowIndex = 0;
+      return;
+    }
+
+    _selectedRowIndex = _selectedRowIndex.clamp(0, currentWords.length - 1);
+  }
+
   void _setSelectedDay(int day) {
     setState(() => _selectedDay = day);
     unawaited(widget.progressRepository.saveSelectedDay(day));
@@ -187,6 +252,92 @@ class _HomePageState extends State<HomePage> {
       }
     });
     unawaited(widget.progressRepository.saveWordStatus(word, status));
+  }
+
+  KeyEventResult _handleBoardKeyEvent(
+    KeyEvent event,
+    List<String> visibleGroups,
+    Map<String, List<VocabWord>> groupedWords,
+  ) {
+    if (event is! KeyDownEvent || visibleGroups.isEmpty) {
+      return KeyEventResult.ignored;
+    }
+
+    final selectedWord = _selectedWord(visibleGroups, groupedWords);
+    final key = event.logicalKey;
+
+    if (key == LogicalKeyboardKey.arrowLeft) {
+      setState(() {
+        _selectedColumnIndex = math.max(0, _selectedColumnIndex - 1);
+        _clampSelection(visibleGroups, groupedWords);
+      });
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.arrowRight) {
+      setState(() {
+        _selectedColumnIndex = math.min(
+          visibleGroups.length - 1,
+          _selectedColumnIndex + 1,
+        );
+        _clampSelection(visibleGroups, groupedWords);
+      });
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.arrowUp) {
+      setState(() {
+        _selectedRowIndex = math.max(0, _selectedRowIndex - 1);
+        _clampSelection(visibleGroups, groupedWords);
+      });
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.arrowDown) {
+      final currentWords =
+          groupedWords[visibleGroups[_selectedColumnIndex]] ??
+          const <VocabWord>[];
+      setState(() {
+        _selectedRowIndex = math.min(
+          math.max(currentWords.length - 1, 0),
+          _selectedRowIndex + 1,
+        );
+        _clampSelection(visibleGroups, groupedWords);
+      });
+      return KeyEventResult.handled;
+    }
+    if (selectedWord == null) {
+      return KeyEventResult.ignored;
+    }
+    if (key == LogicalKeyboardKey.keyD) {
+      _showWordDetails(selectedWord);
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.keyG) {
+      _setWordStatus(selectedWord.word, WordStatus.learned);
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.keyR) {
+      _setWordStatus(selectedWord.word, WordStatus.forgotten);
+      return KeyEventResult.handled;
+    }
+
+    return KeyEventResult.ignored;
+  }
+
+  VocabWord? _selectedWord(
+    List<String> visibleGroups,
+    Map<String, List<VocabWord>> groupedWords,
+  ) {
+    if (visibleGroups.isEmpty) {
+      return null;
+    }
+
+    final currentWords =
+        groupedWords[visibleGroups[_selectedColumnIndex]] ??
+        const <VocabWord>[];
+    if (currentWords.isEmpty) {
+      return null;
+    }
+
+    return currentWords[_selectedRowIndex];
   }
 
   void _showWordDetails(VocabWord word) {
@@ -312,6 +463,7 @@ class _GroupColumn extends StatelessWidget {
     required this.title,
     required this.words,
     required this.maxRows,
+    required this.selectedRowIndex,
     required this.statusFor,
     required this.onWordTap,
   });
@@ -319,8 +471,9 @@ class _GroupColumn extends StatelessWidget {
   final String title;
   final List<VocabWord> words;
   final int maxRows;
+  final int? selectedRowIndex;
   final WordStatus Function(VocabWord word) statusFor;
-  final void Function(VocabWord word) onWordTap;
+  final void Function(VocabWord word, int rowIndex) onWordTap;
 
   @override
   Widget build(BuildContext context) {
@@ -343,11 +496,12 @@ class _GroupColumn extends StatelessWidget {
           for (var index = 0; index < maxRows; index++)
             _WordCell(
               word: index < words.length ? words[index] : null,
+              isSelected: selectedRowIndex == index,
               status: index < words.length
                   ? statusFor(words[index])
                   : WordStatus.untouched,
               onTap: index < words.length
-                  ? () => onWordTap(words[index])
+                  ? () => onWordTap(words[index], index)
                   : null,
             ),
         ],
@@ -359,11 +513,13 @@ class _GroupColumn extends StatelessWidget {
 class _WordCell extends StatelessWidget {
   const _WordCell({
     required this.word,
+    required this.isSelected,
     required this.status,
     required this.onTap,
   });
 
   final VocabWord? word;
+  final bool isSelected;
   final WordStatus status;
   final VoidCallback? onTap;
 
@@ -380,7 +536,10 @@ class _WordCell extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: word == null ? Colors.transparent : background,
-        border: Border.all(color: const Color(0xFFDAD4CF), width: 0.6),
+        border: Border.all(
+          color: isSelected ? const Color(0xFF1A73E8) : const Color(0xFFDAD4CF),
+          width: isSelected ? 2 : 0.6,
+        ),
       ),
       alignment: Alignment.centerLeft,
       child: word == null

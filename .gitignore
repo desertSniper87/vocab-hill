@@ -156,7 +156,6 @@ Sessionx.vim
 
 # End of https://www.toptal.com/developers/gitignore/api/intellij+all,java,vim,tags
 
-.tmp-mnemonic-pages
-.tmp-mnemonic-pages/*
-.tmp-mnemonic-pages/**/*
-s
+data/.tmp-mnemonic-pages
+data/.tmp-mnemonic-pages/*
+data/.tmp-mnemonic-pages/**/*

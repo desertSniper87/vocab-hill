@@ -1,0 +1,11 @@
+- i want make a site like gregmats vocab mountain
+  - there, there are columns of 30 words each
+  - u can progress to next day by clicking 
+  - u can mark the word as "learned" and "forgotten"
+  - u can click the word for definition, example and mnemonic
+  - when u go to next day, there are markers for the previous day
+  
+- Initially i need this site for myself
+- but eventually a login system may be needed
+- There will be sqlite database for all the words etc. 
+- There will be a frontend website but eventually, a mobile app

@@ -34,9 +34,9 @@ flowchart TD
 
 `lib/src/pages/home_page.dart:L241-L255` — `_HomePageState._setSelectedDay` — updates local state and persists the selected day immediately so the same board reopens on the next visit.
 
-`lib/src/pages/home_page.dart:L257-L323` — `_HomePageState._handleBoardKeyEvent` — maps arrows and `d` / `g` / `r` onto the selected cell so learners can move and classify words without leaving the keyboard.
+`lib/src/pages/home_page.dart:L265-L331` — `_HomePageState._handleBoardKeyEvent` — maps arrows and `d` / `g` / `r` onto the selected cell so learners can move, toggle the details panel, and classify words without leaving the keyboard.
 
-`lib/src/pages/home_page.dart:L343-L391` — `_HomePageState._showWordDetails` — keeps the board cells visually clean by moving status changes and word metadata into an on-demand bottom sheet while persisting status changes when the learner selects them.
+`lib/src/pages/home_page.dart:L145-L188` — `_HomePageState.build` — keeps the details panel inside the board screen instead of opening a modal route so keyboard navigation continues to work while details are visible.
 
 `lib/src/pages/home_page.dart:L401-L458` — `_DayHeader.build` — ties the displayed day label and slider to the selected cumulative board because day navigation is now the primary control in the interface.
 

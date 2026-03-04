@@ -8,7 +8,7 @@ The starter project includes:
 - loading vocabulary records from `data/final.json`
 - a day-based board that reveals Groups `1..N` for the selected day
 - a horizontal multi-column layout modeled on the vocab mountain view
-- keyboard control: arrows move, `d` opens details, `g` marks remembered, `r` marks forgotten
+- keyboard control: arrows move, `d` toggles details, `g` marks remembered, `r` marks forgotten
 - per-word detail sheets for definition, Bangla meaning, and mnemonic
 - persisted `learned` / `forgotten` marks and selected day using local device storage
 

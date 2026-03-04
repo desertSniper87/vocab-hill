@@ -79,6 +79,15 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyG);
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyD);
+    await tester.pumpAndSettle();
+
+    expect(progressRepository.savedStatuses['abound'], WordStatus.learned);
+    expect(find.text('Definition'), findsOneWidget);
+    expect(find.text('To exist in large quantities.'), findsOneWidget);
+
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
     await tester.pump();
     await tester.sendKeyEvent(LogicalKeyboardKey.keyR);
@@ -88,17 +97,11 @@ void main() {
       progressRepository.savedStatuses['adulterate'],
       WordStatus.forgotten,
     );
+    expect(find.text('To make impure.'), findsOneWidget);
 
-    await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
-    await tester.pump();
-    await tester.sendKeyEvent(LogicalKeyboardKey.keyG);
-    await tester.pump();
     await tester.sendKeyEvent(LogicalKeyboardKey.keyD);
     await tester.pumpAndSettle();
-
-    expect(progressRepository.savedStatuses['abound'], WordStatus.learned);
-    expect(find.text('Definition'), findsOneWidget);
-    expect(find.text('To exist in large quantities.'), findsOneWidget);
+    expect(find.text('Definition'), findsNothing);
   });
 }
 

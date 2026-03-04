@@ -31,6 +31,7 @@ class _HomePageState extends State<HomePage> {
   int? _selectedDay;
   int _selectedColumnIndex = 0;
   int _selectedRowIndex = 0;
+  bool _detailsOpen = false;
   bool _restoredProgress = false;
 
   @override
@@ -102,6 +103,7 @@ class _HomePageState extends State<HomePage> {
                 .toList(growable: false),
         };
         _clampSelection(visibleGroups, groupedWords);
+        final selectedWord = _selectedWord(visibleGroups, groupedWords);
         final maxRows = groupedWords.values.fold<int>(
           0,
           (current, groupWords) => math.max(current, groupWords.length),
@@ -116,70 +118,112 @@ class _HomePageState extends State<HomePage> {
                 focusNode: _boardFocusNode,
                 onKeyEvent: (node, event) =>
                     _handleBoardKeyEvent(event, visibleGroups, groupedWords),
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(28, 28, 28, 40),
+                child: Stack(
                   children: <Widget>[
-                    _DayHeader(
-                      currentDay: selectedDay,
-                      totalDays: totalDays,
-                      onPrevious: selectedDay > 1
-                          ? () => _setSelectedDay(selectedDay - 1)
-                          : null,
-                      onNext: selectedDay < totalDays
-                          ? () => _setSelectedDay(selectedDay + 1)
-                          : null,
-                      onChanged: (value) {
-                        _setSelectedDay(value.round().clamp(1, totalDays));
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Keyboard: arrows move, D opens details, G marks remembered, R marks forgotten.',
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: const Color(0xFF5A5D66),
+                    ListView(
+                      padding: EdgeInsets.fromLTRB(
+                        28,
+                        28,
+                        28,
+                        _detailsOpen && selectedWord != null ? 340 : 40,
                       ),
+                      children: <Widget>[
+                        _DayHeader(
+                          currentDay: selectedDay,
+                          totalDays: totalDays,
+                          onPrevious: selectedDay > 1
+                              ? () => _setSelectedDay(selectedDay - 1)
+                              : null,
+                          onNext: selectedDay < totalDays
+                              ? () => _setSelectedDay(selectedDay + 1)
+                              : null,
+                          onChanged: (value) {
+                            _setSelectedDay(value.round().clamp(1, totalDays));
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Keyboard: arrows move, D opens or closes details, G marks remembered, R marks forgotten.',
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(color: const Color(0xFF5A5D66)),
+                        ),
+                        const SizedBox(height: 16),
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: visibleGroups
+                                .asMap()
+                                .entries
+                                .map((entry) {
+                                  final groupIndex = entry.key;
+                                  final group = entry.value;
+                                  final groupWords =
+                                      groupedWords[group] ??
+                                      const <VocabWord>[];
+                                  return Padding(
+                                    padding: const EdgeInsets.only(right: 2),
+                                    child: _GroupColumn(
+                                      title: group,
+                                      words: groupWords,
+                                      maxRows: maxRows,
+                                      selectedRowIndex:
+                                          _selectedColumnIndex == groupIndex
+                                          ? _selectedRowIndex
+                                          : null,
+                                      statusFor: (word) =>
+                                          _wordStatuses[word.word] ??
+                                          WordStatus.untouched,
+                                      onWordTap: (word, rowIndex) {
+                                        setState(() {
+                                          _selectedColumnIndex = groupIndex;
+                                          _selectedRowIndex = rowIndex;
+                                          _detailsOpen = true;
+                                        });
+                                        _boardFocusNode.requestFocus();
+                                      },
+                                    ),
+                                  );
+                                })
+                                .toList(growable: false),
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 16),
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: visibleGroups
-                            .asMap()
-                            .entries
-                            .map((entry) {
-                              final groupIndex = entry.key;
-                              final group = entry.value;
-                              final groupWords =
-                                  groupedWords[group] ?? const <VocabWord>[];
-                              return Padding(
-                                padding: const EdgeInsets.only(right: 2),
-                                child: _GroupColumn(
-                                  title: group,
-                                  words: groupWords,
-                                  maxRows: maxRows,
-                                  selectedRowIndex:
-                                      _selectedColumnIndex == groupIndex
-                                      ? _selectedRowIndex
-                                      : null,
-                                  statusFor: (word) =>
-                                      _wordStatuses[word.word] ??
-                                      WordStatus.untouched,
-                                  onWordTap: (word, rowIndex) {
-                                    setState(() {
-                                      _selectedColumnIndex = groupIndex;
-                                      _selectedRowIndex = rowIndex;
-                                    });
-                                    _boardFocusNode.requestFocus();
-                                    _showWordDetails(word);
-                                  },
-                                ),
-                              );
-                            })
-                            .toList(growable: false),
+                    if (_detailsOpen && selectedWord != null)
+                      Positioned.fill(
+                        child: IgnorePointer(
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: const Color(
+                                0xCC1C1D22,
+                              ).withValues(alpha: 0.18),
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
+                    if (_detailsOpen && selectedWord != null)
+                      Align(
+                        alignment: Alignment.bottomCenter,
+                        child: Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: _DetailsPanel(
+                            word: selectedWord,
+                            status:
+                                _wordStatuses[selectedWord.word] ??
+                                WordStatus.untouched,
+                            onClose: () {
+                              setState(() => _detailsOpen = false);
+                              _boardFocusNode.requestFocus();
+                            },
+                            onSelected: (status) {
+                              _setWordStatus(selectedWord.word, status);
+                              _boardFocusNode.requestFocus();
+                            },
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -307,7 +351,7 @@ class _HomePageState extends State<HomePage> {
       return KeyEventResult.ignored;
     }
     if (key == LogicalKeyboardKey.keyD) {
-      _showWordDetails(selectedWord);
+      setState(() => _detailsOpen = !_detailsOpen);
       return KeyEventResult.handled;
     }
     if (key == LogicalKeyboardKey.keyG) {
@@ -338,56 +382,6 @@ class _HomePageState extends State<HomePage> {
     }
 
     return currentWords[_selectedRowIndex];
-  }
-
-  void _showWordDetails(VocabWord word) {
-    final currentStatus = _wordStatuses[word.word] ?? WordStatus.untouched;
-    showModalBottomSheet<void>(
-      context: context,
-      useSafeArea: true,
-      showDragHandle: true,
-      backgroundColor: const Color(0xFFF7F2ED),
-      builder: (context) {
-        return SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  word.word,
-                  style: Theme.of(context).textTheme.headlineSmall,
-                ),
-                const SizedBox(height: 16),
-                _StatusControls(
-                  status: currentStatus,
-                  onSelected: (status) {
-                    _setWordStatus(word.word, status);
-                    Navigator.of(context).pop();
-                  },
-                ),
-                const SizedBox(height: 18),
-                _DetailSection(
-                  title: 'Definition',
-                  body: word.definition ?? 'Definition not added yet.',
-                ),
-                const SizedBox(height: 14),
-                _DetailSection(
-                  title: 'Bangla',
-                  body: word.bangla ?? 'Bangla meaning not added yet.',
-                ),
-                const SizedBox(height: 14),
-                _DetailSection(
-                  title: 'Mnemonic',
-                  body: word.mnemonic ?? 'Mnemonic not added yet.',
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
   }
 }
 
@@ -600,6 +594,93 @@ class _StatusControls extends StatelessWidget {
           onSelected: (_) => onSelected(WordStatus.untouched),
         ),
       ],
+    );
+  }
+}
+
+class _DetailsPanel extends StatelessWidget {
+  const _DetailsPanel({
+    required this.word,
+    required this.status,
+    required this.onClose,
+    required this.onSelected,
+  });
+
+  final VocabWord word;
+  final WordStatus status;
+  final VoidCallback onClose;
+  final ValueChanged<WordStatus> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFFF7F2ED),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFFE1D8CC)),
+          boxShadow: const <BoxShadow>[
+            BoxShadow(
+              color: Color(0x33000000),
+              blurRadius: 30,
+              spreadRadius: 3,
+              offset: Offset(0, 14),
+            ),
+            BoxShadow(
+              color: Color(0x14000000),
+              blurRadius: 10,
+              spreadRadius: 0,
+              offset: Offset(0, 3),
+            ),
+          ],
+        ),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 860, maxHeight: 300),
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 18, 24, 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: Text(
+                          word.word,
+                          style: Theme.of(context).textTheme.headlineSmall,
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: onClose,
+                        child: const Text('Close'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  _StatusControls(status: status, onSelected: onSelected),
+                  const SizedBox(height: 18),
+                  _DetailSection(
+                    title: 'Definition',
+                    body: word.definition ?? 'Definition not added yet.',
+                  ),
+                  const SizedBox(height: 14),
+                  _DetailSection(
+                    title: 'Bangla',
+                    body: word.bangla ?? 'Bangla meaning not added yet.',
+                  ),
+                  const SizedBox(height: 14),
+                  _DetailSection(
+                    title: 'Mnemonic',
+                    body: word.mnemonic ?? 'Mnemonic not added yet.',
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

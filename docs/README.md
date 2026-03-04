@@ -10,6 +10,7 @@ This folder is the source of truth for project structure, decisions, and impleme
 - [2. Architecture](2-architecture/README.md)
 - [Architectural Decisions Index](2-architecture/decisions/README.md)
 - [ADR-001: Use Flutter As The First App Framework](2-architecture/decisions/ADR-001-flutter-single-codebase.md)
+- [ADR-002: Use SQLite For Local Learner Progress](2-architecture/decisions/ADR-002-sqlite-local-progress.md)
 - [3. Agents](3-agents/README.md)
 - [4. Algorithms](4-algorithms/README.md)
 - [5. API](5-api/README.md)

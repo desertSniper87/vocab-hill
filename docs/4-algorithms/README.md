@@ -22,7 +22,11 @@ flowchart TD
 
 `lib/src/repositories/vocab_repository.dart:L15-L22` — `AssetVocabRepository.loadWords` — loads the local JSON asset through Flutter's bundle API so the first scaffold can run without a database.
 
-`lib/src/repositories/progress_repository.dart:L21-L57` — `SharedPreferencesProgressRepository.loadProgress` — restores the selected day and day-scoped word states so the same word can be classified independently on later study days.
+`lib/src/repositories/progress_repository.dart:L31-L68` — `SqliteProgressRepository.loadProgress` — restores selected day and per-day word states from SQLite so the same word can be classified independently on later study days.
+
+`lib/src/repositories/progress_repository.dart:L100-L127` — `SqliteProgressRepository._openDatabase` — creates the local database and required tables before the UI uses progress data, because selected day and per-day word states now live in SQLite instead of key-value storage.
+
+`lib/src/repositories/progress_repository.dart:L155-L231` — `SqliteProgressRepository._migrateLegacyPreferencesIfNeeded` — imports older `SharedPreferences` progress into SQLite once so existing local learner data survives the repository migration.
 
 `lib/src/pages/home_page.dart:L51-L233` — `_HomePageState.build` — converts vocab data plus restored progress into a day board that reveals groups `1..N`, applies only the current day's marks, and attaches keyboard focus because the reference UI benefits from fast, spreadsheet-like movement.
 

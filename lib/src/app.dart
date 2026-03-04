@@ -5,13 +5,12 @@ import 'repositories/progress_repository.dart';
 import 'repositories/vocab_repository.dart';
 
 class VocabHillApp extends StatelessWidget {
-  const VocabHillApp({
+  VocabHillApp({
     super.key,
     VocabRepository? repository,
     ProgressRepository? progressRepository,
   }) : repository = repository ?? const AssetVocabRepository(),
-       progressRepository =
-           progressRepository ?? const SharedPreferencesProgressRepository();
+       progressRepository = progressRepository ?? SqliteProgressRepository();
 
   final VocabRepository repository;
   final ProgressRepository progressRepository;

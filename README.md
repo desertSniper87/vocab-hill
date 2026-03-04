@@ -11,7 +11,7 @@ The starter project includes:
 - a right-side green/red marker showing the most recent previous-day mark for that word
 - keyboard control: arrows move, `d` toggles details, `g` marks remembered, `r` marks forgotten
 - per-word detail sheets for definition, Bangla meaning, and mnemonic
-- persisted per-day `learned` / `forgotten` marks and selected day using local device storage
+- persisted per-day `learned` / `forgotten` marks and selected day using SQLite-backed local storage
 
 ## Why Flutter
 
@@ -28,6 +28,6 @@ flutter run
 
 This scaffold is intentionally narrow:
 
-- SQLite persistence is not wired yet
+- SQLite persistence is wired for learner progress and selected day
 - auth/login is not wired yet
 - Flutter web support is configured and the project builds for the browser target

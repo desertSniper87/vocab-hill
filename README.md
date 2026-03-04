@@ -27,4 +27,4 @@ This scaffold is intentionally narrow:
 
 - SQLite persistence is not wired yet
 - auth/login is not wired yet
-- local web support is not configured on this machine yet, although the app is structured for Flutter web
+- Flutter web support is configured and the project builds for the browser target

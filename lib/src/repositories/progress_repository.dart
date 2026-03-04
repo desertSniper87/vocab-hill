@@ -8,7 +8,7 @@ abstract class ProgressRepository {
 
   Future<void> saveSelectedDay(int selectedDay);
 
-  Future<void> saveWordStatus(String word, WordStatus status);
+  Future<void> saveWordStatus(int day, String word, WordStatus status);
 }
 
 class SharedPreferencesProgressRepository implements ProgressRepository {
@@ -21,24 +21,39 @@ class SharedPreferencesProgressRepository implements ProgressRepository {
   Future<ProgressSnapshot> loadProgress() async {
     final preferences = await SharedPreferences.getInstance();
     final selectedDay = preferences.getInt(_selectedDayKey);
-    final wordStatuses = <String, WordStatus>{};
+    final wordStatusesByDay = <int, Map<String, WordStatus>>{};
 
     for (final key in preferences.getKeys()) {
       if (!key.startsWith(_statusPrefix)) {
         continue;
       }
 
-      final word = key.substring(_statusPrefix.length);
+      final suffix = key.substring(_statusPrefix.length);
+      final separatorIndex = suffix.indexOf('.');
+      if (separatorIndex <= 0 || separatorIndex == suffix.length - 1) {
+        continue;
+      }
+
+      final day = int.tryParse(suffix.substring(0, separatorIndex));
+      if (day == null) {
+        continue;
+      }
+
+      final word = suffix.substring(separatorIndex + 1);
       final storedValue = preferences.getString(key);
       final status = WordStatus.fromStorageValue(storedValue);
       if (status != WordStatus.untouched) {
-        wordStatuses[word] = status;
+        final dayStatuses = wordStatusesByDay.putIfAbsent(
+          day,
+          () => <String, WordStatus>{},
+        );
+        dayStatuses[word] = status;
       }
     }
 
     return ProgressSnapshot(
       selectedDay: selectedDay,
-      wordStatuses: wordStatuses,
+      wordStatusesByDay: wordStatusesByDay,
     );
   }
 
@@ -49,9 +64,9 @@ class SharedPreferencesProgressRepository implements ProgressRepository {
   }
 
   @override
-  Future<void> saveWordStatus(String word, WordStatus status) async {
+  Future<void> saveWordStatus(int day, String word, WordStatus status) async {
     final preferences = await SharedPreferences.getInstance();
-    final key = '$_statusPrefix$word';
+    final key = '$_statusPrefix$day.$word';
     if (status == WordStatus.untouched) {
       await preferences.remove(key);
       return;

@@ -12,7 +12,9 @@ void main() {
     final progressRepository = FakeProgressRepository(
       snapshot: const ProgressSnapshot(
         selectedDay: 3,
-        wordStatuses: <String, WordStatus>{'abound': WordStatus.learned},
+        wordStatusesByDay: <int, Map<String, WordStatus>>{
+          3: <String, WordStatus>{'abound': WordStatus.learned},
+        },
       ),
     );
     await tester.pumpWidget(
@@ -43,7 +45,7 @@ void main() {
     final progressRepository = FakeProgressRepository(
       snapshot: const ProgressSnapshot(
         selectedDay: 2,
-        wordStatuses: <String, WordStatus>{},
+        wordStatusesByDay: <int, Map<String, WordStatus>>{},
       ),
     );
 
@@ -60,14 +62,14 @@ void main() {
     await tester.tap(find.text('Learned'));
     await tester.pumpAndSettle();
 
-    expect(progressRepository.savedStatuses['abound'], WordStatus.learned);
+    expect(progressRepository.savedStatuses[2]?['abound'], WordStatus.learned);
   });
 
   testWidgets('supports keyboard navigation and shortcuts', (tester) async {
     final progressRepository = FakeProgressRepository(
       snapshot: const ProgressSnapshot(
         selectedDay: 3,
-        wordStatuses: <String, WordStatus>{},
+        wordStatusesByDay: <int, Map<String, WordStatus>>{},
       ),
     );
 
@@ -84,7 +86,7 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.keyD);
     await tester.pumpAndSettle();
 
-    expect(progressRepository.savedStatuses['abound'], WordStatus.learned);
+    expect(progressRepository.savedStatuses[3]?['abound'], WordStatus.learned);
     expect(find.text('Definition'), findsOneWidget);
     expect(find.text('To exist in large quantities.'), findsOneWidget);
 
@@ -94,7 +96,7 @@ void main() {
     await tester.pump();
 
     expect(
-      progressRepository.savedStatuses['adulterate'],
+      progressRepository.savedStatuses[3]?['adulterate'],
       WordStatus.forgotten,
     );
     expect(find.text('To make impure.'), findsOneWidget);
@@ -138,7 +140,8 @@ class FakeProgressRepository implements ProgressRepository {
   FakeProgressRepository({required this.snapshot});
 
   final ProgressSnapshot snapshot;
-  final Map<String, WordStatus> savedStatuses = <String, WordStatus>{};
+  final Map<int, Map<String, WordStatus>> savedStatuses =
+      <int, Map<String, WordStatus>>{};
   final List<int> savedSelectedDays = <int>[];
 
   @override
@@ -150,7 +153,11 @@ class FakeProgressRepository implements ProgressRepository {
   }
 
   @override
-  Future<void> saveWordStatus(String word, WordStatus status) async {
-    savedStatuses[word] = status;
+  Future<void> saveWordStatus(int day, String word, WordStatus status) async {
+    final dayStatuses = savedStatuses.putIfAbsent(
+      day,
+      () => <String, WordStatus>{},
+    );
+    dayStatuses[word] = status;
   }
 }

@@ -10,7 +10,7 @@ The starter project includes:
 - a horizontal multi-column layout modeled on the vocab mountain view
 - keyboard control: arrows move, `d` toggles details, `g` marks remembered, `r` marks forgotten
 - per-word detail sheets for definition, Bangla meaning, and mnemonic
-- persisted `learned` / `forgotten` marks and selected day using local device storage
+- persisted per-day `learned` / `forgotten` marks and selected day using local device storage
 
 ## Why Flutter
 

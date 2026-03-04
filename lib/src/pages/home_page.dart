@@ -26,7 +26,8 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   late final Future<_BoardData> _boardDataFuture;
-  final Map<String, WordStatus> _wordStatuses = <String, WordStatus>{};
+  final Map<int, Map<String, WordStatus>> _wordStatusesByDay =
+      <int, Map<String, WordStatus>>{};
   final FocusNode _boardFocusNode = FocusNode(debugLabel: 'boardFocus');
   int? _selectedDay;
   int _selectedColumnIndex = 0;
@@ -81,9 +82,9 @@ class _HomePageState extends State<HomePage> {
         final words = boardData.words;
         final groupNames = _sortedGroupNames(words);
         if (!_restoredProgress) {
-          _wordStatuses
+          _wordStatusesByDay
             ..clear()
-            ..addAll(boardData.progress.wordStatuses);
+            ..addAll(boardData.progress.wordStatusesByDay);
           _selectedDay = boardData.progress.selectedDay;
           _restoredProgress = true;
         }
@@ -93,6 +94,8 @@ class _HomePageState extends State<HomePage> {
           math.max(_selectedDay ?? math.min(6, totalDays), 1),
           totalDays,
         );
+        final currentDayStatuses =
+            _wordStatusesByDay[selectedDay] ?? const <String, WordStatus>{};
         final visibleGroups = groupNames
             .take(selectedDay)
             .toList(growable: false);
@@ -166,7 +169,7 @@ class _HomePageState extends State<HomePage> {
                                           ? _selectedRowIndex
                                           : null,
                                       statusFor: (word) =>
-                                          _wordStatuses[word.word] ??
+                                          currentDayStatuses[word.word] ??
                                           WordStatus.untouched,
                                       onWordTap: (word, rowIndex) {
                                         setState(() {
@@ -204,14 +207,18 @@ class _HomePageState extends State<HomePage> {
                           child: _DetailsPanel(
                             word: selectedWord,
                             status:
-                                _wordStatuses[selectedWord.word] ??
+                                currentDayStatuses[selectedWord.word] ??
                                 WordStatus.untouched,
                             onClose: () {
                               setState(() => _detailsOpen = false);
                               _boardFocusNode.requestFocus();
                             },
                             onSelected: (status) {
-                              _setWordStatus(selectedWord.word, status);
+                              _setWordStatus(
+                                selectedDay,
+                                selectedWord.word,
+                                status,
+                              );
                               _boardFocusNode.requestFocus();
                             },
                           ),
@@ -280,15 +287,22 @@ class _HomePageState extends State<HomePage> {
     unawaited(widget.progressRepository.saveSelectedDay(day));
   }
 
-  void _setWordStatus(String word, WordStatus status) {
+  void _setWordStatus(int day, String word, WordStatus status) {
     setState(() {
+      final dayStatuses = _wordStatusesByDay.putIfAbsent(
+        day,
+        () => <String, WordStatus>{},
+      );
       if (status == WordStatus.untouched) {
-        _wordStatuses.remove(word);
+        dayStatuses.remove(word);
+        if (dayStatuses.isEmpty) {
+          _wordStatusesByDay.remove(day);
+        }
       } else {
-        _wordStatuses[word] = status;
+        dayStatuses[word] = status;
       }
     });
-    unawaited(widget.progressRepository.saveWordStatus(word, status));
+    unawaited(widget.progressRepository.saveWordStatus(day, word, status));
   }
 
   KeyEventResult _handleBoardKeyEvent(
@@ -348,11 +362,19 @@ class _HomePageState extends State<HomePage> {
       return KeyEventResult.handled;
     }
     if (key == LogicalKeyboardKey.keyG) {
-      _setWordStatus(selectedWord.word, WordStatus.learned);
+      _setWordStatus(
+        _selectedDay ?? visibleGroups.length,
+        selectedWord.word,
+        WordStatus.learned,
+      );
       return KeyEventResult.handled;
     }
     if (key == LogicalKeyboardKey.keyR) {
-      _setWordStatus(selectedWord.word, WordStatus.forgotten);
+      _setWordStatus(
+        _selectedDay ?? visibleGroups.length,
+        selectedWord.word,
+        WordStatus.forgotten,
+      );
       return KeyEventResult.handled;
     }
 

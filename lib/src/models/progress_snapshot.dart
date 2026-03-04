@@ -3,9 +3,9 @@ import 'word_status.dart';
 class ProgressSnapshot {
   const ProgressSnapshot({
     required this.selectedDay,
-    required this.wordStatuses,
+    required this.wordStatusesByDay,
   });
 
   final int? selectedDay;
-  final Map<String, WordStatus> wordStatuses;
+  final Map<int, Map<String, WordStatus>> wordStatusesByDay;
 }

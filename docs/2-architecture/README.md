@@ -18,11 +18,11 @@ flowchart TD
     D --> E["Day Header + Slider"]
     D --> F["Visible Group Columns"]
     F --> G["Word Cells"]
-    G --> H["Word Detail Bottom Sheet"]
+    G --> H["Inline Word Detail Panel"]
 ```
 
 The current scaffold is deliberately simple:
 
 - assets are the source of vocabulary content
 - repositories isolate both vocab loading and progress persistence from UI rendering
-- the page state restores persisted day selection and word marks before rendering the board
+- the page state restores persisted day selection and day-specific word marks before rendering the board

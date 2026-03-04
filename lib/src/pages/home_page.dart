@@ -141,13 +141,6 @@ class _HomePageState extends State<HomePage> {
                             _setSelectedDay(value.round().clamp(1, totalDays));
                           },
                         ),
-                        const SizedBox(height: 12),
-                        Text(
-                          'Keyboard: arrows move, D opens or closes details, G marks remembered, R marks forgotten.',
-                          textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(color: const Color(0xFF5A5D66)),
-                        ),
                         const SizedBox(height: 16),
                         SingleChildScrollView(
                           scrollDirection: Axis.horizontal,

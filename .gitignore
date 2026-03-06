@@ -170,3 +170,6 @@ ios/Flutter/ephemeral/
 ios/Pods/
 pubspec.lock
 *.iml
+
+# Local Netlify folder
+.netlify

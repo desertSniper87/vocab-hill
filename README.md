@@ -10,9 +10,9 @@ The starter project includes:
 - a horizontal multi-column layout modeled on the vocab mountain view
 - a right-side green/red marker showing the most recent previous-day mark for that word
 - keyboard control: arrows move, `d` toggles details, `g` marks remembered, `r` marks forgotten
-- per-word detail sheets for definition, Bangla meaning, and mnemonic
+- per-word detail sheets with a `Study Info` view for the local definition/Bangla/mnemonic and a separate `Dictionary API` view for meanings, examples, synonyms, and antonyms
 - persisted per-day `learned` / `forgotten` marks and selected day using SQLite-backed local storage
-- optional cross-browser sync through a small Dart backend plus a shared sync key
+- optional cross-browser sync through matching Python or Dart backends plus a shared sync key
 
 ## Why Flutter
 
@@ -26,6 +26,12 @@ flutter run
 ```
 
 To run local cross-browser sync:
+
+```bash
+python3 bin/sync_server.py
+```
+
+Or:
 
 ```bash
 dart run bin/sync_server.dart

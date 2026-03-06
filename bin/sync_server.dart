@@ -163,8 +163,7 @@ Map<String, Object?> _mergeSnapshot(
       (payload['statuses'] as List<dynamic>? ?? const <dynamic>[])
           .cast<Map<String, dynamic>>();
 
-  final transaction = database;
-  final existingSelectedDayRow = transaction.select(
+  final existingSelectedDayRow = database.select(
     '''
     SELECT selected_day, updated_at
     FROM app_state
@@ -181,7 +180,7 @@ Map<String, Object?> _mergeSnapshot(
     incomingSelectedDayUpdatedAt,
     existingSelectedDayUpdatedAt,
   )) {
-    transaction.execute(
+    database.execute(
       '''
       INSERT INTO app_state(sync_key, selected_day, updated_at)
       VALUES (?, ?, ?)
@@ -194,7 +193,7 @@ Map<String, Object?> _mergeSnapshot(
   }
 
   for (final record in incomingStatuses) {
-    final existingRow = transaction.select(
+    final existingRow = database.select(
       '''
       SELECT updated_at
       FROM word_progress
@@ -211,7 +210,7 @@ Map<String, Object?> _mergeSnapshot(
       continue;
     }
 
-    transaction.execute(
+    database.execute(
       '''
       INSERT INTO word_progress(sync_key, day, word, status, updated_at)
       VALUES (?, ?, ?, ?, ?)
@@ -229,7 +228,7 @@ Map<String, Object?> _mergeSnapshot(
     );
   }
 
-  return _readSnapshot(transaction, syncKey);
+  return _readSnapshot(database, syncKey);
 }
 
 void _ensureLearner(Database database, String syncKey) {

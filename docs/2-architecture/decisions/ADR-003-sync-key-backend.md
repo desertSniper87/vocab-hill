@@ -1,4 +1,4 @@
-# ADR-003: Use A Manual Sync Key With A Small Dart Sync Backend
+# ADR-003: Use A Manual Sync Key With A Small Interchangeable Sync Backend
 
 ## Status
 
@@ -10,7 +10,7 @@ The app now stores learner progress locally in SQLite, which works for one brows
 
 ## Decision
 
-Use a small Dart HTTP server with a server-side SQLite database and a manual sync key as the temporary learner identity.
+Use a small backend with a server-side SQLite database and a manual sync key as the temporary learner identity. Keep Python and Dart server implementations aligned to the same contract so either runtime can be used when only one server is active.
 
 The Flutter app remains offline-first:
 
@@ -23,9 +23,11 @@ The Flutter app remains offline-first:
 flowchart LR
     A["Flutter app"] --> B["Local SQLite progress DB"]
     A --> C["ProgressSyncClient"]
-    C --> D["Dart sync server"]
-    D --> E["Server-side SQLite sync DB"]
-    A --> F["Manual sync key"]
+    C --> D["Python sync server"]
+    C --> E["Dart sync server"]
+    D --> F["Server-side SQLite sync DB"]
+    E --> F
+    A --> G["Manual sync key"]
 ```
 
 ## Consequences
@@ -35,9 +37,11 @@ Positive:
 - cross-browser progress works without waiting for a full login system
 - the Flutter UI stays mostly unchanged because sync sits behind `ProgressRepository`
 - local-first behavior still works if the backend is temporarily unavailable
+- either Python or Dart can host the same API as long as only one server is active at a time
 
 Negative:
 
 - a manual sync key is not real authentication and is only appropriate for personal or low-risk use
 - conflict resolution is intentionally simple and based on timestamps, so simultaneous edits resolve by recency rather than user intent
 - production use will still need a stronger identity and security model later
+- maintaining two server implementations increases the risk of contract drift if they are not kept in lockstep

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'pages/home_page.dart';
+import 'repositories/dictionary_repository.dart';
 import 'repositories/progress_repository.dart';
 import 'repositories/vocab_repository.dart';
 
@@ -8,11 +9,14 @@ class VocabHillApp extends StatelessWidget {
   VocabHillApp({
     super.key,
     VocabRepository? repository,
+    DictionaryRepository? dictionaryRepository,
     ProgressRepository? progressRepository,
   }) : repository = repository ?? const AssetVocabRepository(),
+       dictionaryRepository = dictionaryRepository ?? ApiDictionaryRepository(),
        progressRepository = progressRepository ?? SqliteProgressRepository();
 
   final VocabRepository repository;
+  final DictionaryRepository dictionaryRepository;
   final ProgressRepository progressRepository;
 
   @override
@@ -63,6 +67,7 @@ class VocabHillApp extends StatelessWidget {
       ),
       home: HomePage(
         repository: repository,
+        dictionaryRepository: dictionaryRepository,
         progressRepository: progressRepository,
       ),
     );

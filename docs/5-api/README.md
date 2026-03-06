@@ -5,8 +5,10 @@ The project now has a minimal sync API for cross-browser learner progress.
 ## Current Boundary
 
 - `AssetVocabRepository` remains the vocabulary content boundary inside the app.
+- `DictionaryRepository` is the in-app boundary for live lookups against `https://api.dictionaryapi.dev/api/v2/entries/en/:word`, including meanings, examples, synonyms, and antonyms.
 - `ProgressRepository` remains the learner-state boundary inside the app and now hides both local SQLite and optional remote sync from widgets.
 - The sync transport is intentionally narrow and only handles learner progress, not vocab content.
+- The current backend implementations are a standard-library Python HTTP server and a Dart server, both backed by the same SQLite schema and JSON contract.
 
 ## HTTP Endpoints
 

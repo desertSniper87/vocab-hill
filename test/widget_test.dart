@@ -2,10 +2,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:vocab_hill/src/app.dart';
+import 'package:vocab_hill/src/models/dictionary_entry.dart';
 import 'package:vocab_hill/src/models/progress_snapshot.dart';
 import 'package:vocab_hill/src/models/sync_settings.dart';
 import 'package:vocab_hill/src/models/vocab_word.dart';
 import 'package:vocab_hill/src/models/word_status.dart';
+import 'package:vocab_hill/src/repositories/dictionary_repository.dart';
 import 'package:vocab_hill/src/repositories/progress_repository.dart';
 import 'package:vocab_hill/src/repositories/vocab_repository.dart';
 
@@ -22,6 +24,7 @@ void main() {
     );
     await tester.pumpWidget(
       VocabHillApp(
+        dictionaryRepository: FakeDictionaryRepository(),
         repository: FakeVocabRepository(),
         progressRepository: progressRepository,
       ),
@@ -40,6 +43,7 @@ void main() {
 
     expect(find.text('Definition'), findsOneWidget);
     expect(find.text('To exist in large quantities.'), findsOneWidget);
+    expect(find.text('Dictionary API'), findsOneWidget);
     expect(find.byKey(const Key('previous-status-abound')), findsOneWidget);
 
     expect(progressRepository.savedSelectedDays, isEmpty);
@@ -55,6 +59,7 @@ void main() {
 
     await tester.pumpWidget(
       VocabHillApp(
+        dictionaryRepository: FakeDictionaryRepository(),
         repository: FakeVocabRepository(),
         progressRepository: progressRepository,
       ),
@@ -79,6 +84,7 @@ void main() {
 
     await tester.pumpWidget(
       VocabHillApp(
+        dictionaryRepository: FakeDictionaryRepository(),
         repository: FakeVocabRepository(),
         progressRepository: progressRepository,
       ),
@@ -120,6 +126,7 @@ void main() {
 
     await tester.pumpWidget(
       VocabHillApp(
+        dictionaryRepository: FakeDictionaryRepository(),
         repository: FakeVocabRepository(),
         progressRepository: progressRepository,
       ),
@@ -141,6 +148,39 @@ void main() {
       'http://localhost:8080',
     );
     expect(progressRepository.savedSyncSettings?.syncKey, 'demo-key');
+  });
+
+  testWidgets('switches to dictionary panel with synonyms and antonyms', (
+    tester,
+  ) async {
+    final progressRepository = FakeProgressRepository(
+      snapshot: const ProgressSnapshot(
+        selectedDay: 1,
+        wordStatusesByDay: <int, Map<String, WordStatus>>{},
+      ),
+    );
+
+    await tester.pumpWidget(
+      VocabHillApp(
+        dictionaryRepository: FakeDictionaryRepository(),
+        repository: FakeVocabRepository(),
+        progressRepository: progressRepository,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('abound'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Dictionary API'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Phonetic'), findsOneWidget);
+    expect(find.text('/əˈbaʊnd/'), findsOneWidget);
+    expect(find.text('Meaning (verb)'), findsOneWidget);
+    expect(find.textContaining('to exist in great quantities'), findsOneWidget);
+    expect(find.textContaining('Synonyms: teem, overflow'), findsOneWidget);
+    expect(find.textContaining('Antonyms: lack'), findsOneWidget);
+    expect(find.textContaining('Example: Fish abound'), findsOneWidget);
   });
 }
 
@@ -170,6 +210,57 @@ class FakeVocabRepository implements VocabRepository {
         mnemonic: null,
       ),
     ];
+  }
+}
+
+class FakeDictionaryRepository implements DictionaryRepository {
+  @override
+  Future<DictionaryEntry?> lookupWord(String word) async {
+    if (word == 'abound') {
+      return const DictionaryEntry(
+        word: 'abound',
+        phonetic: '/əˈbaʊnd/',
+        meanings: <DictionaryMeaning>[
+          DictionaryMeaning(
+            partOfSpeech: 'verb',
+            definitions: <DictionaryDefinition>[
+              DictionaryDefinition(
+                text: 'to exist in great quantities',
+                example: 'Fish abound in the lake.',
+                synonyms: <String>['teem', 'overflow'],
+                antonyms: <String>['lack'],
+              ),
+            ],
+            synonyms: <String>['teem', 'overflow'],
+            antonyms: <String>['lack'],
+          ),
+        ],
+        sourceUrls: <String>['https://example.test/abound'],
+      );
+    }
+    if (word == 'adulterate') {
+      return const DictionaryEntry(
+        word: 'adulterate',
+        phonetic: '/əˈdʌltəreɪt/',
+        meanings: <DictionaryMeaning>[
+          DictionaryMeaning(
+            partOfSpeech: 'verb',
+            definitions: <DictionaryDefinition>[
+              DictionaryDefinition(
+                text: 'to make impure by adding foreign matter',
+                example: null,
+                synonyms: <String>['contaminate'],
+                antonyms: <String>['purify'],
+              ),
+            ],
+            synonyms: <String>['contaminate'],
+            antonyms: <String>['purify'],
+          ),
+        ],
+        sourceUrls: <String>['https://example.test/adulterate'],
+      );
+    }
+    return null;
   }
 }
 

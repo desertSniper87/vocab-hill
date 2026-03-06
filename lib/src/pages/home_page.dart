@@ -4,10 +4,12 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../models/dictionary_entry.dart';
 import '../models/progress_snapshot.dart';
 import '../models/sync_settings.dart';
 import '../models/vocab_word.dart';
 import '../models/word_status.dart';
+import '../repositories/dictionary_repository.dart';
 import '../repositories/progress_repository.dart';
 import '../repositories/vocab_repository.dart';
 
@@ -15,10 +17,12 @@ class HomePage extends StatefulWidget {
   const HomePage({
     super.key,
     required this.repository,
+    required this.dictionaryRepository,
     required this.progressRepository,
   });
 
   final VocabRepository repository;
+  final DictionaryRepository dictionaryRepository;
   final ProgressRepository progressRepository;
 
   @override
@@ -216,6 +220,7 @@ class _HomePageState extends State<HomePage> {
                           padding: const EdgeInsets.all(20),
                           child: _DetailsPanel(
                             word: selectedWord,
+                            dictionaryRepository: widget.dictionaryRepository,
                             status:
                                 currentDayStatuses[selectedWord.word] ??
                                 WordStatus.untouched,
@@ -807,21 +812,41 @@ class _StatusControls extends StatelessWidget {
   }
 }
 
-class _DetailsPanel extends StatelessWidget {
+class _DetailsPanel extends StatefulWidget {
   const _DetailsPanel({
     required this.word,
+    required this.dictionaryRepository,
     required this.status,
     required this.onClose,
     required this.onSelected,
   });
 
   final VocabWord word;
+  final DictionaryRepository dictionaryRepository;
   final WordStatus status;
   final VoidCallback onClose;
   final ValueChanged<WordStatus> onSelected;
 
   @override
+  State<_DetailsPanel> createState() => _DetailsPanelState();
+}
+
+class _DetailsPanelState extends State<_DetailsPanel> {
+  _DetailsView _selectedView = _DetailsView.studyInfo;
+
+  @override
+  void didUpdateWidget(covariant _DetailsPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.word.word != widget.word.word) {
+      _selectedView = _DetailsView.studyInfo;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final dictionaryFuture = widget.dictionaryRepository.lookupWord(
+      widget.word.word,
+    );
     final viewportHeight = MediaQuery.sizeOf(context).height;
 
     return Material(
@@ -863,32 +888,30 @@ class _DetailsPanel extends StatelessWidget {
                     children: <Widget>[
                       Expanded(
                         child: Text(
-                          word.word,
+                          widget.word.word,
                           style: Theme.of(context).textTheme.headlineSmall,
                         ),
                       ),
                       TextButton(
-                        onPressed: onClose,
+                        onPressed: widget.onClose,
                         child: const Text('Close'),
                       ),
                     ],
                   ),
                   const SizedBox(height: 10),
-                  _StatusControls(status: status, onSelected: onSelected),
+                  _DetailsToolbar(
+                    status: widget.status,
+                    onSelected: widget.onSelected,
+                    selectedView: _selectedView,
+                    onViewSelected: (view) {
+                      setState(() => _selectedView = view);
+                    },
+                  ),
                   const SizedBox(height: 18),
-                  _DetailSection(
-                    title: 'Definition',
-                    body: word.definition ?? 'Definition not added yet.',
-                  ),
-                  const SizedBox(height: 14),
-                  _DetailSection(
-                    title: 'Bangla',
-                    body: word.bangla ?? 'Bangla meaning not added yet.',
-                  ),
-                  const SizedBox(height: 14),
-                  _DetailSection(
-                    title: 'Mnemonic',
-                    body: word.mnemonic ?? 'Mnemonic not added yet.',
+                  _DetailsBody(
+                    word: widget.word,
+                    dictionaryFuture: dictionaryFuture,
+                    selectedView: _selectedView,
                   ),
                 ],
               ),
@@ -896,6 +919,250 @@ class _DetailsPanel extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+enum _DetailsView { studyInfo, dictionaryApi }
+
+class _DetailsToolbar extends StatelessWidget {
+  const _DetailsToolbar({
+    required this.status,
+    required this.onSelected,
+    required this.selectedView,
+    required this.onViewSelected,
+  });
+
+  final WordStatus status;
+  final ValueChanged<WordStatus> onSelected;
+  final _DetailsView selectedView;
+  final ValueChanged<_DetailsView> onViewSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        _StatusControls(status: status, onSelected: onSelected),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: <Widget>[
+            ChoiceChip(
+              label: const Text('Study Info'),
+              selected: selectedView == _DetailsView.studyInfo,
+              onSelected: (_) => onViewSelected(_DetailsView.studyInfo),
+            ),
+            ChoiceChip(
+              label: const Text('Dictionary API'),
+              selected: selectedView == _DetailsView.dictionaryApi,
+              onSelected: (_) => onViewSelected(_DetailsView.dictionaryApi),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _DetailsBody extends StatelessWidget {
+  const _DetailsBody({
+    required this.word,
+    required this.dictionaryFuture,
+    this.selectedView = _DetailsView.studyInfo,
+  });
+
+  final VocabWord word;
+  final Future<DictionaryEntry?> dictionaryFuture;
+  final _DetailsView selectedView;
+
+  @override
+  Widget build(BuildContext context) {
+    if (selectedView == _DetailsView.dictionaryApi) {
+      return _DictionaryApiPanel(dictionaryFuture: dictionaryFuture);
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        _DetailSection(
+          title: 'Definition',
+          body: word.definition ?? 'Definition not added yet.',
+        ),
+        const SizedBox(height: 14),
+        _DetailSection(
+          title: 'Bangla',
+          body: word.bangla ?? 'Bangla meaning not added yet.',
+        ),
+        const SizedBox(height: 14),
+        _DetailSection(
+          title: 'Mnemonic',
+          body: word.mnemonic ?? 'Mnemonic not added yet.',
+        ),
+      ],
+    );
+  }
+}
+
+class _DictionaryApiPanel extends StatelessWidget {
+  const _DictionaryApiPanel({required this.dictionaryFuture});
+
+  final Future<DictionaryEntry?> dictionaryFuture;
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<DictionaryEntry?>(
+      future: dictionaryFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const _DetailSection(
+            title: 'Dictionary API',
+            body: 'Loading dictionaryapi.dev details...',
+          );
+        }
+
+        if (snapshot.hasError) {
+          return const _DetailSection(
+            title: 'Dictionary API',
+            body: 'Could not load dictionaryapi.dev details.',
+          );
+        }
+
+        final entry = snapshot.data;
+        if (entry == null || entry.meanings.isEmpty) {
+          return const _DetailSection(
+            title: 'Dictionary API',
+            body: 'No dictionaryapi.dev details found for this word.',
+          );
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            if (entry.phonetic != null && entry.phonetic!.isNotEmpty)
+              _DetailSection(title: 'Phonetic', body: entry.phonetic!),
+            if (entry.phonetic != null && entry.phonetic!.isNotEmpty)
+              const SizedBox(height: 14),
+            for (
+              var index = 0;
+              index < entry.meanings.length;
+              index++
+            ) ...<Widget>[
+              _DictionaryMeaningSection(meaning: entry.meanings[index]),
+              if (index < entry.meanings.length - 1) const SizedBox(height: 18),
+            ],
+            if (entry.sourceUrls.isNotEmpty) ...<Widget>[
+              const SizedBox(height: 18),
+              _DefinitionListSection(
+                title: 'Sources',
+                entries: entry.sourceUrls,
+              ),
+            ],
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _DictionaryMeaningSection extends StatelessWidget {
+  const _DictionaryMeaningSection({required this.meaning});
+
+  final DictionaryMeaning meaning;
+
+  @override
+  Widget build(BuildContext context) {
+    final title = meaning.partOfSpeech == null || meaning.partOfSpeech!.isEmpty
+        ? 'Meaning'
+        : 'Meaning (${meaning.partOfSpeech})';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(title, style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 6),
+        for (
+          var index = 0;
+          index < meaning.definitions.length;
+          index++
+        ) ...<Widget>[
+          _DictionaryDefinitionSection(
+            index: index + 1,
+            definition: meaning.definitions[index],
+          ),
+          if (index < meaning.definitions.length - 1)
+            const SizedBox(height: 10),
+        ],
+        if (meaning.synonyms.isNotEmpty) ...<Widget>[
+          const SizedBox(height: 10),
+          _InlineMetadataSection(title: 'Synonyms', entries: meaning.synonyms),
+        ],
+        if (meaning.antonyms.isNotEmpty) ...<Widget>[
+          const SizedBox(height: 10),
+          _InlineMetadataSection(title: 'Antonyms', entries: meaning.antonyms),
+        ],
+      ],
+    );
+  }
+}
+
+class _DictionaryDefinitionSection extends StatelessWidget {
+  const _DictionaryDefinitionSection({
+    required this.index,
+    required this.definition,
+  });
+
+  final int index;
+  final DictionaryDefinition definition;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(
+          '$index. ${definition.text}',
+          style: Theme.of(context).textTheme.bodyLarge,
+        ),
+        if (definition.example != null &&
+            definition.example!.isNotEmpty) ...<Widget>[
+          const SizedBox(height: 4),
+          Text(
+            'Example: ${definition.example!}',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+        ],
+        if (definition.synonyms.isNotEmpty) ...<Widget>[
+          const SizedBox(height: 4),
+          _InlineMetadataSection(
+            title: 'Definition synonyms',
+            entries: definition.synonyms,
+          ),
+        ],
+        if (definition.antonyms.isNotEmpty) ...<Widget>[
+          const SizedBox(height: 4),
+          _InlineMetadataSection(
+            title: 'Definition antonyms',
+            entries: definition.antonyms,
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _InlineMetadataSection extends StatelessWidget {
+  const _InlineMetadataSection({required this.title, required this.entries});
+
+  final String title;
+  final List<String> entries;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      '$title: ${entries.join(', ')}',
+      style: Theme.of(context).textTheme.bodyMedium,
     );
   }
 }
@@ -914,6 +1181,40 @@ class _DetailSection extends StatelessWidget {
         Text(title, style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 6),
         Text(body, style: Theme.of(context).textTheme.bodyLarge),
+      ],
+    );
+  }
+}
+
+class _DefinitionListSection extends StatelessWidget {
+  const _DefinitionListSection({required this.title, required this.entries});
+
+  final String title;
+  final List<String> entries;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(title, style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 6),
+        for (final entry in entries)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text('\u2022 ', style: Theme.of(context).textTheme.bodyLarge),
+                Expanded(
+                  child: Text(
+                    entry,
+                    style: Theme.of(context).textTheme.bodyLarge,
+                  ),
+                ),
+              ],
+            ),
+          ),
       ],
     );
   }

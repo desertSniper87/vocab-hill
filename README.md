@@ -10,7 +10,7 @@ The starter project includes:
 - a horizontal multi-column layout modeled on the vocab mountain view
 - a right-side green/red marker showing the most recent previous-day mark for that word
 - keyboard control: arrows move, `d` toggles details, `g` marks remembered, `r` marks forgotten
-- per-word detail sheets with a `Study Info` view for the local definition/Bangla/mnemonic and a separate `Dictionary API` view for meanings, examples, synonyms, and antonyms
+- per-word detail sheets with a `Study Info` view for the local definition/Bangla/mnemonic and a separate `Dictionary API` view for meanings, examples, synonyms, antonyms, and clickable source links
 - persisted per-day `learned` / `forgotten` marks and selected day using SQLite-backed local storage
 - optional cross-browser sync through matching Python or Dart backends plus a shared sync key
 

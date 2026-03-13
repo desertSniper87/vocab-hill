@@ -181,6 +181,7 @@ void main() {
     expect(find.textContaining('Synonyms: teem, overflow'), findsOneWidget);
     expect(find.textContaining('Antonyms: lack'), findsOneWidget);
     expect(find.textContaining('Example: Fish abound'), findsOneWidget);
+    expect(find.text('https://example.test/abound'), findsOneWidget);
   });
 }
 

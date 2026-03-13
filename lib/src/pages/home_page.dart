@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/link.dart';
 
 import '../models/dictionary_entry.dart';
 import '../models/progress_snapshot.dart';
@@ -1054,10 +1055,7 @@ class _DictionaryApiPanel extends StatelessWidget {
             ],
             if (entry.sourceUrls.isNotEmpty) ...<Widget>[
               const SizedBox(height: 18),
-              _DefinitionListSection(
-                title: 'Sources',
-                entries: entry.sourceUrls,
-              ),
+              _SourceLinkSection(title: 'Sources', urls: entry.sourceUrls),
             ],
           ],
         );
@@ -1167,6 +1165,44 @@ class _InlineMetadataSection extends StatelessWidget {
   }
 }
 
+class _SourceLinkSection extends StatelessWidget {
+  const _SourceLinkSection({required this.title, required this.urls});
+
+  final String title;
+  final List<String> urls;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(title, style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 6),
+        for (final url in urls)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Link(
+              uri: Uri.parse(url),
+              target: LinkTarget.blank,
+              builder: (context, followLink) {
+                return InkWell(
+                  onTap: followLink,
+                  child: Text(
+                    url,
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: const Color(0xFF1A73E8),
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+      ],
+    );
+  }
+}
+
 class _DetailSection extends StatelessWidget {
   const _DetailSection({required this.title, required this.body});
 
@@ -1181,40 +1217,6 @@ class _DetailSection extends StatelessWidget {
         Text(title, style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 6),
         Text(body, style: Theme.of(context).textTheme.bodyLarge),
-      ],
-    );
-  }
-}
-
-class _DefinitionListSection extends StatelessWidget {
-  const _DefinitionListSection({required this.title, required this.entries});
-
-  final String title;
-  final List<String> entries;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Text(title, style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: 6),
-        for (final entry in entries)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 6),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text('\u2022 ', style: Theme.of(context).textTheme.bodyLarge),
-                Expanded(
-                  child: Text(
-                    entry,
-                    style: Theme.of(context).textTheme.bodyLarge,
-                  ),
-                ),
-              ],
-            ),
-          ),
       ],
     );
   }

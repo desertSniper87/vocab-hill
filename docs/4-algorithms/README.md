@@ -68,6 +68,8 @@ flowchart TD
 
 `lib/src/pages/home_page.dart:L1008-L1066` — `_DictionaryApiPanel.build` — loads the selected word through `DictionaryRepository` and renders loading, empty, and error states so the external dictionary source does not block the rest of the details card.
 
+`lib/src/pages/home_page.dart:L1143-L1174` — `_SourceLinkSection.build` — renders source URLs as real links so dictionary references can be opened directly in the browser from the details panel.
+
 `lib/src/pages/home_page.dart:L496-L554` — `_DayHeader.build` — ties the displayed day label and slider to the selected cumulative board and exposes sync settings because day navigation and sync setup now both live in the page header.
 
 `lib/src/pages/home_page.dart:L657-L692` — `_GroupColumn.build` — renders each group as a fixed-width vertical strip and passes both current-day status and previous-day marker data into each cell.

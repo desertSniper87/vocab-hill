@@ -26,4 +26,16 @@
     "show_summary": true,
     "show_command": true,
   },
+  {
+    "label": "Netlify Deploy",
+    "command": "flutter build web --wasm && netlify deploy --prod --open",
+    "use_new_terminal": false,
+    "allow_concurrent_runs": false,
+    "reveal": "always",
+    "reveal_target": "dock",
+    "hide": "never",
+    "shell": "system",
+    "show_summary": true,
+    "show_command": true,
+  },
 ]

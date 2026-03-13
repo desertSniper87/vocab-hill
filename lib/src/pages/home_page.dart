@@ -143,6 +143,7 @@ class _HomePageState extends State<HomePage> {
                           currentDay: selectedDay,
                           totalDays: totalDays,
                           syncSettings: _syncSettings,
+                          onForgottenPressed: _openForgottenWordsDialog,
                           onPrevious: selectedDay > 1
                               ? () => _setSelectedDay(selectedDay - 1)
                               : null,
@@ -225,6 +226,10 @@ class _HomePageState extends State<HomePage> {
                             status:
                                 currentDayStatuses[selectedWord.word] ??
                                 WordStatus.untouched,
+                            previousStatus: _latestPreviousStatus(
+                              selectedDay,
+                              selectedWord.word,
+                            ),
                             onClose: () {
                               setState(() => _detailsOpen = false);
                               _boardFocusNode.requestFocus();
@@ -300,6 +305,72 @@ class _HomePageState extends State<HomePage> {
         context,
       ).showSnackBar(SnackBar(content: Text('Sync failed: $error')));
     }
+  }
+
+  Future<void> _openForgottenWordsDialog() async {
+    final forgottenWords = _latestForgottenWords();
+    final exportText = forgottenWords.join(', ');
+
+    if (!mounted) {
+      return;
+    }
+
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Forgotten Words'),
+          content: SizedBox(
+            width: 540,
+            child: forgottenWords.isEmpty
+                ? const Text('No forgotten words in your progress yet.')
+                : SelectableText(exportText),
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Close'),
+            ),
+            if (forgottenWords.isNotEmpty)
+              FilledButton(
+                onPressed: () async {
+                  await Clipboard.setData(ClipboardData(text: exportText));
+                  if (!context.mounted) {
+                    return;
+                  }
+                  Navigator.of(context).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Forgotten words copied to clipboard.'),
+                    ),
+                  );
+                },
+                child: const Text('Copy'),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  List<String> _latestForgottenWords() {
+    final latestByWord = <String, ({int day, WordStatus status})>{};
+    for (final entry in _wordStatusesByDay.entries) {
+      final day = entry.key;
+      for (final statusEntry in entry.value.entries) {
+        final current = latestByWord[statusEntry.key];
+        if (current == null || day > current.day) {
+          latestByWord[statusEntry.key] = (day: day, status: statusEntry.value);
+        }
+      }
+    }
+
+    final forgottenWords = latestByWord.entries
+        .where((entry) => entry.value.status == WordStatus.forgotten)
+        .map((entry) => entry.key)
+        .toList(growable: false);
+    forgottenWords.sort();
+    return forgottenWords;
   }
 
   List<String> _sortedGroupNames(List<VocabWord> words) {
@@ -485,6 +556,7 @@ class _DayHeader extends StatelessWidget {
     required this.currentDay,
     required this.totalDays,
     required this.syncSettings,
+    required this.onForgottenPressed,
     required this.onPrevious,
     required this.onNext,
     required this.onChanged,
@@ -494,6 +566,7 @@ class _DayHeader extends StatelessWidget {
   final int currentDay;
   final int totalDays;
   final SyncSettings syncSettings;
+  final VoidCallback onForgottenPressed;
   final VoidCallback? onPrevious;
   final VoidCallback? onNext;
   final ValueChanged<double> onChanged;
@@ -521,6 +594,11 @@ class _DayHeader extends StatelessWidget {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
+                OutlinedButton(
+                  onPressed: onForgottenPressed,
+                  child: const Text('Forgotten List'),
+                ),
+                const SizedBox(width: 8),
                 OutlinedButton.icon(
                   onPressed: onSyncPressed,
                   icon: Icon(
@@ -818,6 +896,7 @@ class _DetailsPanel extends StatefulWidget {
     required this.word,
     required this.dictionaryRepository,
     required this.status,
+    required this.previousStatus,
     required this.onClose,
     required this.onSelected,
   });
@@ -825,6 +904,7 @@ class _DetailsPanel extends StatefulWidget {
   final VocabWord word;
   final DictionaryRepository dictionaryRepository;
   final WordStatus status;
+  final WordStatus? previousStatus;
   final VoidCallback onClose;
   final ValueChanged<WordStatus> onSelected;
 
@@ -902,6 +982,7 @@ class _DetailsPanelState extends State<_DetailsPanel> {
                   const SizedBox(height: 10),
                   _DetailsToolbar(
                     status: widget.status,
+                    previousStatus: widget.previousStatus,
                     onSelected: widget.onSelected,
                     selectedView: _selectedView,
                     onViewSelected: (view) {
@@ -912,6 +993,7 @@ class _DetailsPanelState extends State<_DetailsPanel> {
                   _DetailsBody(
                     word: widget.word,
                     dictionaryFuture: dictionaryFuture,
+                    previousStatus: widget.previousStatus,
                     selectedView: _selectedView,
                   ),
                 ],
@@ -929,12 +1011,14 @@ enum _DetailsView { studyInfo, dictionaryApi }
 class _DetailsToolbar extends StatelessWidget {
   const _DetailsToolbar({
     required this.status,
+    required this.previousStatus,
     required this.onSelected,
     required this.selectedView,
     required this.onViewSelected,
   });
 
   final WordStatus status;
+  final WordStatus? previousStatus;
   final ValueChanged<WordStatus> onSelected;
   final _DetailsView selectedView;
   final ValueChanged<_DetailsView> onViewSelected;
@@ -945,6 +1029,8 @@ class _DetailsToolbar extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         _StatusControls(status: status, onSelected: onSelected),
+        const SizedBox(height: 10),
+        _PreviousDaysBadge(previousStatus: previousStatus),
         const SizedBox(height: 10),
         Wrap(
           spacing: 10,
@@ -971,11 +1057,13 @@ class _DetailsBody extends StatelessWidget {
   const _DetailsBody({
     required this.word,
     required this.dictionaryFuture,
+    required this.previousStatus,
     this.selectedView = _DetailsView.studyInfo,
   });
 
   final VocabWord word;
   final Future<DictionaryEntry?> dictionaryFuture;
+  final WordStatus? previousStatus;
   final _DetailsView selectedView;
 
   @override
@@ -1002,6 +1090,49 @@ class _DetailsBody extends StatelessWidget {
           body: word.mnemonic ?? 'Mnemonic not added yet.',
         ),
       ],
+    );
+  }
+}
+
+class _PreviousDaysBadge extends StatelessWidget {
+  const _PreviousDaysBadge({required this.previousStatus});
+
+  final WordStatus? previousStatus;
+
+  @override
+  Widget build(BuildContext context) {
+    final (label, background, foreground) = switch (previousStatus) {
+      WordStatus.learned => (
+        'Previous Days: Learned',
+        const Color(0xFFD9EEDC),
+        const Color(0xFF236A3E),
+      ),
+      WordStatus.forgotten => (
+        'Previous Days: Forgotten',
+        const Color(0xFFF3D8D8),
+        const Color(0xFF9B3E39),
+      ),
+      WordStatus.untouched || null => (
+        'Previous Days: No mark yet',
+        const Color(0xFFEAE4DA),
+        const Color(0xFF6B6154),
+      ),
+    };
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: foreground.withValues(alpha: 0.28)),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+          color: foreground,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
     );
   }
 }

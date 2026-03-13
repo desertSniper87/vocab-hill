@@ -43,6 +43,7 @@ void main() {
 
     expect(find.text('Definition'), findsOneWidget);
     expect(find.text('To exist in large quantities.'), findsOneWidget);
+    expect(find.text('Previous Days: Learned'), findsOneWidget);
     expect(find.text('Dictionary API'), findsOneWidget);
     expect(find.byKey(const Key('previous-status-abound')), findsOneWidget);
 
@@ -148,6 +149,40 @@ void main() {
       'http://localhost:8080',
     );
     expect(progressRepository.savedSyncSettings?.syncKey, 'demo-key');
+  });
+
+  testWidgets('exports latest forgotten words as a comma-separated list', (
+    tester,
+  ) async {
+    final progressRepository = FakeProgressRepository(
+      snapshot: const ProgressSnapshot(
+        selectedDay: 3,
+        wordStatusesByDay: <int, Map<String, WordStatus>>{
+          1: <String, WordStatus>{'abound': WordStatus.forgotten},
+          2: <String, WordStatus>{
+            'abound': WordStatus.learned,
+            'adulterate': WordStatus.forgotten,
+          },
+          3: <String, WordStatus>{'abate': WordStatus.forgotten},
+        },
+      ),
+    );
+
+    await tester.pumpWidget(
+      VocabHillApp(
+        dictionaryRepository: FakeDictionaryRepository(),
+        repository: FakeVocabRepository(),
+        progressRepository: progressRepository,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Forgotten List'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Forgotten Words'), findsOneWidget);
+    expect(find.text('abate, adulterate'), findsOneWidget);
+    expect(find.text('Copy'), findsOneWidget);
   });
 
   testWidgets('switches to dictionary panel with synonyms and antonyms', (

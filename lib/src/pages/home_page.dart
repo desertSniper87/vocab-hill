@@ -40,6 +40,7 @@ class _HomePageState extends State<HomePage> {
   int _selectedColumnIndex = 0;
   int _selectedRowIndex = 0;
   bool _detailsOpen = false;
+  _DetailsView _selectedDetailsView = _DetailsView.studyInfo;
   bool _restoredProgress = false;
 
   @override
@@ -192,6 +193,8 @@ class _HomePageState extends State<HomePage> {
                                           _selectedColumnIndex = groupIndex;
                                           _selectedRowIndex = rowIndex;
                                           _detailsOpen = true;
+                                          _selectedDetailsView =
+                                              _DetailsView.studyInfo;
                                         });
                                         _boardFocusNode.requestFocus();
                                       },
@@ -230,6 +233,7 @@ class _HomePageState extends State<HomePage> {
                               selectedDay,
                               selectedWord.word,
                             ),
+                            selectedView: _selectedDetailsView,
                             onClose: () {
                               setState(() => _detailsOpen = false);
                               _boardFocusNode.requestFocus();
@@ -240,6 +244,10 @@ class _HomePageState extends State<HomePage> {
                                 selectedWord.word,
                                 status,
                               );
+                              _boardFocusNode.requestFocus();
+                            },
+                            onViewSelected: (view) {
+                              setState(() => _selectedDetailsView = view);
                               _boardFocusNode.requestFocus();
                             },
                           ),
@@ -460,6 +468,9 @@ class _HomePageState extends State<HomePage> {
       setState(() {
         _selectedColumnIndex = math.max(0, _selectedColumnIndex - 1);
         _clampSelection(visibleGroups, groupedWords);
+        if (_detailsOpen) {
+          _selectedDetailsView = _DetailsView.studyInfo;
+        }
       });
       return KeyEventResult.handled;
     }
@@ -470,6 +481,9 @@ class _HomePageState extends State<HomePage> {
           _selectedColumnIndex + 1,
         );
         _clampSelection(visibleGroups, groupedWords);
+        if (_detailsOpen) {
+          _selectedDetailsView = _DetailsView.studyInfo;
+        }
       });
       return KeyEventResult.handled;
     }
@@ -477,6 +491,9 @@ class _HomePageState extends State<HomePage> {
       setState(() {
         _selectedRowIndex = math.max(0, _selectedRowIndex - 1);
         _clampSelection(visibleGroups, groupedWords);
+        if (_detailsOpen) {
+          _selectedDetailsView = _DetailsView.studyInfo;
+        }
       });
       return KeyEventResult.handled;
     }
@@ -490,6 +507,9 @@ class _HomePageState extends State<HomePage> {
           _selectedRowIndex + 1,
         );
         _clampSelection(visibleGroups, groupedWords);
+        if (_detailsOpen) {
+          _selectedDetailsView = _DetailsView.studyInfo;
+        }
       });
       return KeyEventResult.handled;
     }
@@ -497,7 +517,19 @@ class _HomePageState extends State<HomePage> {
       return KeyEventResult.ignored;
     }
     if (key == LogicalKeyboardKey.keyD) {
-      setState(() => _detailsOpen = !_detailsOpen);
+      setState(() {
+        _detailsOpen = !_detailsOpen;
+        if (_detailsOpen) {
+          _selectedDetailsView = _DetailsView.studyInfo;
+        }
+      });
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.keyT) {
+      setState(() {
+        _detailsOpen = true;
+        _selectedDetailsView = _DetailsView.dictionaryApi;
+      });
       return KeyEventResult.handled;
     }
     if (key == LogicalKeyboardKey.keyG) {
@@ -897,32 +929,26 @@ class _DetailsPanel extends StatefulWidget {
     required this.dictionaryRepository,
     required this.status,
     required this.previousStatus,
+    required this.selectedView,
     required this.onClose,
     required this.onSelected,
+    required this.onViewSelected,
   });
 
   final VocabWord word;
   final DictionaryRepository dictionaryRepository;
   final WordStatus status;
   final WordStatus? previousStatus;
+  final _DetailsView selectedView;
   final VoidCallback onClose;
   final ValueChanged<WordStatus> onSelected;
+  final ValueChanged<_DetailsView> onViewSelected;
 
   @override
   State<_DetailsPanel> createState() => _DetailsPanelState();
 }
 
 class _DetailsPanelState extends State<_DetailsPanel> {
-  _DetailsView _selectedView = _DetailsView.studyInfo;
-
-  @override
-  void didUpdateWidget(covariant _DetailsPanel oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.word.word != widget.word.word) {
-      _selectedView = _DetailsView.studyInfo;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final dictionaryFuture = widget.dictionaryRepository.lookupWord(
@@ -984,17 +1010,15 @@ class _DetailsPanelState extends State<_DetailsPanel> {
                     status: widget.status,
                     previousStatus: widget.previousStatus,
                     onSelected: widget.onSelected,
-                    selectedView: _selectedView,
-                    onViewSelected: (view) {
-                      setState(() => _selectedView = view);
-                    },
+                    selectedView: widget.selectedView,
+                    onViewSelected: widget.onViewSelected,
                   ),
                   const SizedBox(height: 18),
                   _DetailsBody(
                     word: widget.word,
                     dictionaryFuture: dictionaryFuture,
                     previousStatus: widget.previousStatus,
-                    selectedView: _selectedView,
+                    selectedView: widget.selectedView,
                   ),
                 ],
               ),

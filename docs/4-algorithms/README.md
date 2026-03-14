@@ -51,30 +51,30 @@ flowchart TD
 
 `bin/sync_server.dart:L140-L212` — `_mergeSnapshot` — mirrors the Python server's timestamp-based merge logic so either runtime updates the same SQLite file consistently.
 
-`lib/src/pages/home_page.dart:L58-L255` — `_HomePageState.build` — converts vocab data plus restored progress into a day board that reveals groups `1..N`, applies only the current day's marks, and attaches keyboard focus because the reference UI benefits from fast, spreadsheet-like movement.
+`lib/src/pages/home_page.dart:L58-L261` — `_HomePageState.build` — converts vocab data plus restored progress into a day board that reveals groups `1..N`, applies only the current day's marks, and attaches keyboard focus because the reference UI benefits from fast, spreadsheet-like movement.
 
-`lib/src/pages/home_page.dart:L258-L269` — `_HomePageState._loadBoardData` — hydrates the screen from vocab, progress, and sync settings together so the board and sync controls render consistently on first paint.
+`lib/src/pages/home_page.dart:L266-L277` — `_HomePageState._loadBoardData` — hydrates the screen from vocab, progress, and sync settings together so the board and sync controls render consistently on first paint.
 
-`lib/src/pages/home_page.dart:L271-L308` — `_HomePageState._openSyncSettingsDialog` — saves the server URL and sync key from the header dialog and then pulls merged remote state so another browser can resume the same learner progress immediately.
+`lib/src/pages/home_page.dart:L279-L316` — `_HomePageState._openSyncSettingsDialog` — saves the server URL and sync key from the header dialog and then pulls merged remote state so another browser can resume the same learner progress immediately.
 
-`lib/src/pages/home_page.dart:L310-L354` — `_HomePageState._openForgottenWordsDialog` — collects the words whose most recent saved state is `forgotten` and exposes them as a copyable comma-separated export from the top header.
+`lib/src/pages/home_page.dart:L318-L362` — `_HomePageState._openForgottenWordsDialog` — collects the words whose most recent saved state is `forgotten` and exposes them as a copyable comma-separated export from the top header.
 
-`lib/src/pages/home_page.dart:L388-L411` — `_HomePageState._clampSelection` — keeps the active keyboard cell inside the currently visible board so selection remains valid when the visible day range changes.
+`lib/src/pages/home_page.dart:L396-L419` — `_HomePageState._clampSelection` — keeps the active keyboard cell inside the currently visible board so selection remains valid when the visible day range changes.
 
-`lib/src/pages/home_page.dart:L413-L416` — `_HomePageState._setSelectedDay` — writes the current day locally and triggers best-effort remote sync so day navigation stays resumable across browsers when sync is configured.
+`lib/src/pages/home_page.dart:L421-L424` — `_HomePageState._setSelectedDay` — writes the current day locally and triggers best-effort remote sync so day navigation stays resumable across browsers when sync is configured.
 
-`lib/src/pages/home_page.dart:L436-L445` — `_HomePageState._latestPreviousStatus` — walks backward through earlier days so each cell can show the most recent prior-day marker without mixing it into the current day's main status color.
+`lib/src/pages/home_page.dart:L444-L453` — `_HomePageState._latestPreviousStatus` — walks backward through earlier days so each cell can show the most recent prior-day marker without mixing it into the current day's main status color.
 
-`lib/src/pages/home_page.dart:L447-L520` — `_HomePageState._handleBoardKeyEvent` — maps arrows and `d` / `g` / `r` onto the selected cell so learners can move, toggle the details panel, and classify words without leaving the keyboard.
+`lib/src/pages/home_page.dart:L455-L553` — `_HomePageState._handleBoardKeyEvent` — maps arrows and `d` / `t` / `g` / `r` onto the selected cell so learners can move, open either details tab from the keyboard, and classify words without leaving the board.
 
-`lib/src/pages/home_page.dart:L926-L1006` — `_DetailsPanelState.build` — keeps the selected subview inside the details card so the learner can switch between local study info, with a top-level previous-day badge, and the richer dictionary API panel without leaving the current word.
+`lib/src/pages/home_page.dart:L953-L1030` — `_DetailsPanelState.build` — keeps the selected subview inside the details card so the learner can switch between local study info, with a top-level previous-day badge, and the richer dictionary API panel without leaving the current word.
 
-`lib/src/pages/home_page.dart:L1145-L1195` — `_DictionaryApiPanel.build` — loads the selected word through `DictionaryRepository` and renders loading, empty, and error states so the external dictionary source does not block the rest of the details card.
+`lib/src/pages/home_page.dart:L1169-L1219` — `_DictionaryApiPanel.build` — loads the selected word through `DictionaryRepository` and renders loading, empty, and error states so the external dictionary source does not block the rest of the details card.
 
-`lib/src/pages/home_page.dart:L1305-L1334` — `_SourceLinkSection.build` — renders source URLs as real links so dictionary references can be opened directly in the browser from the details panel.
+`lib/src/pages/home_page.dart:L1329-L1358` — `_SourceLinkSection.build` — renders source URLs as real links so dictionary references can be opened directly in the browser from the details panel.
 
-`lib/src/pages/home_page.dart:L576-L637` — `_DayHeader.build` — ties the displayed day label and slider to the selected cumulative board, exposes sync settings, and now exports a copyable forgotten-word list from the page header.
+`lib/src/pages/home_page.dart:L608-L670` — `_DayHeader.build` — ties the displayed day label and slider to the selected cumulative board, exposes sync settings, and now exports a copyable forgotten-word list from the page header.
 
-`lib/src/pages/home_page.dart:L741-L776` — `_GroupColumn.build` — renders each group as a fixed-width vertical strip and passes both current-day status and previous-day marker data into each cell.
+`lib/src/pages/home_page.dart:L774-L808` — `_GroupColumn.build` — renders each group as a fixed-width vertical strip and passes both current-day status and previous-day marker data into each cell.
 
-`lib/src/pages/home_page.dart:L794-L849` — `_WordCell.build` — maps current-day status to cell background and the latest prior-day status to a small right-side circle so both today’s result and historical context are visible at once.
+`lib/src/pages/home_page.dart:L827-L880` — `_WordCell.build` — maps current-day status to cell background and the latest prior-day status to a small right-side circle so both today’s result and historical context are visible at once.

@@ -101,8 +101,14 @@ void main() {
     expect(find.text('Definition'), findsOneWidget);
     expect(find.text('To exist in large quantities.'), findsOneWidget);
 
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyT);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Phonetic'), findsOneWidget);
+    expect(find.text('/əˈbaʊnd/'), findsOneWidget);
+
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
-    await tester.pump();
+    await tester.pumpAndSettle();
     await tester.sendKeyEvent(LogicalKeyboardKey.keyR);
     await tester.pump();
 

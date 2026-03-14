@@ -17,3 +17,4 @@ The project is still in scaffold stage, but it now has two runnable pieces: the 
 2. Open the app in each browser you want to share.
 3. Use the `Set Sync` button in the header.
 4. Enter the same `Server URL` and `Sync key` in each browser.
+5. Optionally enter local Merriam-Webster dictionary and thesaurus API keys if you want those tabs enabled in that browser profile.

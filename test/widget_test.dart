@@ -4,7 +4,9 @@ import 'package:flutter/widgets.dart';
 import 'package:vocab_hill/src/app.dart';
 import 'package:vocab_hill/src/models/dictionary_entry.dart';
 import 'package:vocab_hill/src/models/progress_snapshot.dart';
+import 'package:vocab_hill/src/models/reference_api_settings.dart';
 import 'package:vocab_hill/src/models/sync_settings.dart';
+import 'package:vocab_hill/src/models/thesaurus_entry.dart';
 import 'package:vocab_hill/src/models/vocab_word.dart';
 import 'package:vocab_hill/src/models/word_status.dart';
 import 'package:vocab_hill/src/repositories/dictionary_repository.dart';
@@ -82,6 +84,10 @@ void main() {
         wordStatusesByDay: <int, Map<String, WordStatus>>{},
       ),
     );
+    progressRepository.referenceApiSettings = const ReferenceApiSettings(
+      merriamDictionaryKey: 'dict-key',
+      merriamThesaurusKey: 'thes-key',
+    );
 
     await tester.pumpWidget(
       VocabHillApp(
@@ -106,6 +112,21 @@ void main() {
 
     expect(find.text('Phonetic'), findsOneWidget);
     expect(find.text('/əˈbaʊnd/'), findsOneWidget);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyY);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Pronunciation'), findsOneWidget);
+    expect(find.text('əbau̇nd'), findsOneWidget);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyU);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.textContaining('Senses: to be present in large numbers'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('Synonyms: teem, overflow'), findsOneWidget);
 
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
     await tester.pumpAndSettle();
@@ -147,6 +168,14 @@ void main() {
       'http://localhost:8080',
     );
     await tester.enterText(find.byKey(const Key('sync-key-field')), 'demo-key');
+    await tester.enterText(
+      find.byKey(const Key('merriam-dictionary-key-field')),
+      'dict-key',
+    );
+    await tester.enterText(
+      find.byKey(const Key('merriam-thesaurus-key-field')),
+      'thes-key',
+    );
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
 
@@ -155,6 +184,14 @@ void main() {
       'http://localhost:8080',
     );
     expect(progressRepository.savedSyncSettings?.syncKey, 'demo-key');
+    expect(
+      progressRepository.savedReferenceApiSettings?.merriamDictionaryKey,
+      'dict-key',
+    );
+    expect(
+      progressRepository.savedReferenceApiSettings?.merriamThesaurusKey,
+      'thes-key',
+    );
   });
 
   testWidgets('exports latest forgotten words as a comma-separated list', (
@@ -200,6 +237,10 @@ void main() {
         wordStatusesByDay: <int, Map<String, WordStatus>>{},
       ),
     );
+    progressRepository.referenceApiSettings = const ReferenceApiSettings(
+      merriamDictionaryKey: 'dict-key',
+      merriamThesaurusKey: 'thes-key',
+    );
 
     await tester.pumpWidget(
       VocabHillApp(
@@ -223,6 +264,35 @@ void main() {
     expect(find.textContaining('Antonyms: lack'), findsOneWidget);
     expect(find.textContaining('Example: Fish abound'), findsOneWidget);
     expect(find.text('https://example.test/abound'), findsOneWidget);
+
+    await tester.tap(find.text('M-W Dictionary'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Pronunciation'), findsOneWidget);
+    expect(find.text('əbau̇nd'), findsOneWidget);
+    expect(find.textContaining('Meaning (verb)'), findsOneWidget);
+    expect(
+      find.textContaining('to be present in large numbers'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('https://www.merriam-webster.com/dictionary/abound'),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.text('M-W Thesaurus'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.textContaining('Senses: to be present in large numbers'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('Synonyms: teem, overflow'), findsOneWidget);
+    expect(find.textContaining('Antonyms: lack'), findsOneWidget);
+    expect(
+      find.text('https://www.merriam-webster.com/thesaurus/abound'),
+      findsOneWidget,
+    );
   });
 }
 
@@ -304,6 +374,54 @@ class FakeDictionaryRepository implements DictionaryRepository {
     }
     return null;
   }
+
+  @override
+  Future<DictionaryEntry?> lookupMerriamDictionary(
+    String word,
+    String apiKey,
+  ) async {
+    if (word != 'abound' || apiKey.isEmpty) {
+      return null;
+    }
+    return const DictionaryEntry(
+      word: 'abound',
+      phonetic: 'əbau̇nd',
+      meanings: <DictionaryMeaning>[
+        DictionaryMeaning(
+          partOfSpeech: 'verb',
+          definitions: <DictionaryDefinition>[
+            DictionaryDefinition(
+              text: 'to be present in large numbers or in great quantity',
+              example: null,
+              synonyms: <String>[],
+              antonyms: <String>[],
+            ),
+          ],
+          synonyms: <String>[],
+          antonyms: <String>[],
+        ),
+      ],
+      sourceUrls: <String>['https://www.merriam-webster.com/dictionary/abound'],
+    );
+  }
+
+  @override
+  Future<ThesaurusEntry?> lookupMerriamThesaurus(
+    String word,
+    String apiKey,
+  ) async {
+    if (word != 'abound' || apiKey.isEmpty) {
+      return null;
+    }
+    return const ThesaurusEntry(
+      word: 'abound',
+      partOfSpeech: 'verb',
+      senses: <String>['to be present in large numbers'],
+      synonyms: <String>['teem', 'overflow'],
+      antonyms: <String>['lack'],
+      sourceUrls: <String>['https://www.merriam-webster.com/thesaurus/abound'],
+    );
+  }
 }
 
 class FakeProgressRepository implements ProgressRepository {
@@ -311,10 +429,12 @@ class FakeProgressRepository implements ProgressRepository {
 
   final ProgressSnapshot snapshot;
   SyncSettings syncSettings = SyncSettings.empty;
+  ReferenceApiSettings referenceApiSettings = ReferenceApiSettings.empty;
   final Map<int, Map<String, WordStatus>> savedStatuses =
       <int, Map<String, WordStatus>>{};
   final List<int> savedSelectedDays = <int>[];
   SyncSettings? savedSyncSettings;
+  ReferenceApiSettings? savedReferenceApiSettings;
 
   @override
   Future<ProgressSnapshot> loadProgress() async => snapshot;
@@ -340,6 +460,16 @@ class FakeProgressRepository implements ProgressRepository {
   Future<void> saveSyncSettings(SyncSettings settings) async {
     syncSettings = settings;
     savedSyncSettings = settings;
+  }
+
+  @override
+  Future<ReferenceApiSettings> loadReferenceApiSettings() async =>
+      referenceApiSettings;
+
+  @override
+  Future<void> saveReferenceApiSettings(ReferenceApiSettings settings) async {
+    referenceApiSettings = settings;
+    savedReferenceApiSettings = settings;
   }
 
   @override

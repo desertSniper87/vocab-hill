@@ -7,7 +7,9 @@ import 'package:url_launcher/link.dart';
 
 import '../models/dictionary_entry.dart';
 import '../models/progress_snapshot.dart';
+import '../models/reference_api_settings.dart';
 import '../models/sync_settings.dart';
+import '../models/thesaurus_entry.dart';
 import '../models/vocab_word.dart';
 import '../models/word_status.dart';
 import '../repositories/dictionary_repository.dart';
@@ -42,6 +44,7 @@ class _HomePageState extends State<HomePage> {
   bool _detailsOpen = false;
   _DetailsView _selectedDetailsView = _DetailsView.studyInfo;
   bool _restoredProgress = false;
+  ReferenceApiSettings _referenceApiSettings = ReferenceApiSettings.empty;
 
   @override
   void initState() {
@@ -95,6 +98,7 @@ class _HomePageState extends State<HomePage> {
             ..addAll(boardData.progress.wordStatusesByDay);
           _selectedDay = boardData.progress.selectedDay;
           _syncSettings = boardData.syncSettings;
+          _referenceApiSettings = boardData.referenceApiSettings;
           _restoredProgress = true;
         }
 
@@ -233,6 +237,7 @@ class _HomePageState extends State<HomePage> {
                               selectedDay,
                               selectedWord.word,
                             ),
+                            referenceApiSettings: _referenceApiSettings,
                             selectedView: _selectedDetailsView,
                             onClose: () {
                               setState(() => _detailsOpen = false);
@@ -268,26 +273,37 @@ class _HomePageState extends State<HomePage> {
       widget.repository.loadWords(),
       widget.progressRepository.loadProgress(),
       widget.progressRepository.loadSyncSettings(),
+      widget.progressRepository.loadReferenceApiSettings(),
     ]);
     return _BoardData(
       words: results[0] as List<VocabWord>,
       progress: results[1] as ProgressSnapshot,
       syncSettings: results[2] as SyncSettings,
+      referenceApiSettings: results[3] as ReferenceApiSettings,
     );
   }
 
   Future<void> _openSyncSettingsDialog() async {
-    final settings = await showDialog<SyncSettings>(
+    final settings = await showDialog<_SettingsDialogResult>(
       context: context,
-      builder: (context) => _SyncSettingsDialog(initialSettings: _syncSettings),
+      builder: (context) => _SyncSettingsDialog(
+        initialSyncSettings: _syncSettings,
+        initialReferenceApiSettings: _referenceApiSettings,
+      ),
     );
     if (settings == null || !mounted) {
       return;
     }
 
-    await widget.progressRepository.saveSyncSettings(settings);
-    setState(() => _syncSettings = settings);
-    if (!settings.isConfigured) {
+    await widget.progressRepository.saveSyncSettings(settings.syncSettings);
+    await widget.progressRepository.saveReferenceApiSettings(
+      settings.referenceApiSettings,
+    );
+    setState(() {
+      _syncSettings = settings.syncSettings;
+      _referenceApiSettings = settings.referenceApiSettings;
+    });
+    if (!settings.syncSettings.isConfigured) {
       return;
     }
 
@@ -532,6 +548,20 @@ class _HomePageState extends State<HomePage> {
       });
       return KeyEventResult.handled;
     }
+    if (key == LogicalKeyboardKey.keyY) {
+      setState(() {
+        _detailsOpen = true;
+        _selectedDetailsView = _DetailsView.merriamDictionary;
+      });
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.keyU) {
+      setState(() {
+        _detailsOpen = true;
+        _selectedDetailsView = _DetailsView.merriamThesaurus;
+      });
+      return KeyEventResult.handled;
+    }
     if (key == LogicalKeyboardKey.keyG) {
       _setWordStatus(
         _selectedDay ?? visibleGroups.length,
@@ -576,11 +606,23 @@ class _BoardData {
     required this.words,
     required this.progress,
     required this.syncSettings,
+    required this.referenceApiSettings,
   });
 
   final List<VocabWord> words;
   final ProgressSnapshot progress;
   final SyncSettings syncSettings;
+  final ReferenceApiSettings referenceApiSettings;
+}
+
+class _SettingsDialogResult {
+  const _SettingsDialogResult({
+    required this.syncSettings,
+    required this.referenceApiSettings,
+  });
+
+  final SyncSettings syncSettings;
+  final ReferenceApiSettings referenceApiSettings;
 }
 
 class _DayHeader extends StatelessWidget {
@@ -671,9 +713,13 @@ class _DayHeader extends StatelessWidget {
 }
 
 class _SyncSettingsDialog extends StatefulWidget {
-  const _SyncSettingsDialog({required this.initialSettings});
+  const _SyncSettingsDialog({
+    required this.initialSyncSettings,
+    required this.initialReferenceApiSettings,
+  });
 
-  final SyncSettings initialSettings;
+  final SyncSettings initialSyncSettings;
+  final ReferenceApiSettings initialReferenceApiSettings;
 
   @override
   State<_SyncSettingsDialog> createState() => _SyncSettingsDialogState();
@@ -681,16 +727,26 @@ class _SyncSettingsDialog extends StatefulWidget {
 
 class _SyncSettingsDialogState extends State<_SyncSettingsDialog> {
   late final TextEditingController _serverController = TextEditingController(
-    text: widget.initialSettings.serverUrl,
+    text: widget.initialSyncSettings.serverUrl,
   );
   late final TextEditingController _keyController = TextEditingController(
-    text: widget.initialSettings.syncKey,
+    text: widget.initialSyncSettings.syncKey,
   );
+  late final TextEditingController _merriamDictionaryController =
+      TextEditingController(
+        text: widget.initialReferenceApiSettings.merriamDictionaryKey,
+      );
+  late final TextEditingController _merriamThesaurusController =
+      TextEditingController(
+        text: widget.initialReferenceApiSettings.merriamThesaurusKey,
+      );
 
   @override
   void dispose() {
     _serverController.dispose();
     _keyController.dispose();
+    _merriamDictionaryController.dispose();
+    _merriamThesaurusController.dispose();
     super.dispose();
   }
 
@@ -700,32 +756,54 @@ class _SyncSettingsDialogState extends State<_SyncSettingsDialog> {
       title: const Text('Sync Settings'),
       content: SizedBox(
         width: 460,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            const Text(
-              'Use the same sync key in multiple browsers to share progress.',
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              key: const Key('sync-server-field'),
-              controller: _serverController,
-              decoration: const InputDecoration(
-                labelText: 'Server URL',
-                hintText: 'http://localhost:8080',
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              const Text(
+                'Use the same sync key in multiple browsers to share progress.',
               ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              key: const Key('sync-key-field'),
-              controller: _keyController,
-              decoration: const InputDecoration(
-                labelText: 'Sync key',
-                hintText: 'your-shared-progress-key',
+              const SizedBox(height: 16),
+              TextField(
+                key: const Key('sync-server-field'),
+                controller: _serverController,
+                decoration: const InputDecoration(
+                  labelText: 'Server URL',
+                  hintText: 'http://localhost:8080',
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 12),
+              TextField(
+                key: const Key('sync-key-field'),
+                controller: _keyController,
+                decoration: const InputDecoration(
+                  labelText: 'Sync key',
+                  hintText: 'your-shared-progress-key',
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Merriam-Webster API keys stay in local SQLite settings and are not embedded into the web bundle.',
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                key: const Key('merriam-dictionary-key-field'),
+                controller: _merriamDictionaryController,
+                decoration: const InputDecoration(
+                  labelText: 'Merriam Dictionary key',
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                key: const Key('merriam-thesaurus-key-field'),
+                controller: _merriamThesaurusController,
+                decoration: const InputDecoration(
+                  labelText: 'Merriam Thesaurus key',
+                ),
+              ),
+            ],
+          ),
         ),
       ),
       actions: <Widget>[
@@ -736,11 +814,18 @@ class _SyncSettingsDialogState extends State<_SyncSettingsDialog> {
         FilledButton(
           onPressed: () {
             Navigator.of(context).pop(
-              SyncSettings(
-                serverUrl: _serverController.text.trim().isEmpty
-                    ? SyncSettings.defaultServerUrl
-                    : _serverController.text.trim(),
-                syncKey: _keyController.text.trim(),
+              _SettingsDialogResult(
+                syncSettings: SyncSettings(
+                  serverUrl: _serverController.text.trim().isEmpty
+                      ? SyncSettings.defaultServerUrl
+                      : _serverController.text.trim(),
+                  syncKey: _keyController.text.trim(),
+                ),
+                referenceApiSettings: ReferenceApiSettings(
+                  merriamDictionaryKey: _merriamDictionaryController.text
+                      .trim(),
+                  merriamThesaurusKey: _merriamThesaurusController.text.trim(),
+                ),
               ),
             );
           },
@@ -929,6 +1014,7 @@ class _DetailsPanel extends StatefulWidget {
     required this.dictionaryRepository,
     required this.status,
     required this.previousStatus,
+    required this.referenceApiSettings,
     required this.selectedView,
     required this.onClose,
     required this.onSelected,
@@ -939,6 +1025,7 @@ class _DetailsPanel extends StatefulWidget {
   final DictionaryRepository dictionaryRepository;
   final WordStatus status;
   final WordStatus? previousStatus;
+  final ReferenceApiSettings referenceApiSettings;
   final _DetailsView selectedView;
   final VoidCallback onClose;
   final ValueChanged<WordStatus> onSelected;
@@ -954,6 +1041,20 @@ class _DetailsPanelState extends State<_DetailsPanel> {
     final dictionaryFuture = widget.dictionaryRepository.lookupWord(
       widget.word.word,
     );
+    final merriamDictionaryFuture =
+        widget.referenceApiSettings.hasMerriamDictionaryKey
+        ? widget.dictionaryRepository.lookupMerriamDictionary(
+            widget.word.word,
+            widget.referenceApiSettings.merriamDictionaryKey,
+          )
+        : null;
+    final merriamThesaurusFuture =
+        widget.referenceApiSettings.hasMerriamThesaurusKey
+        ? widget.dictionaryRepository.lookupMerriamThesaurus(
+            widget.word.word,
+            widget.referenceApiSettings.merriamThesaurusKey,
+          )
+        : null;
     final viewportHeight = MediaQuery.sizeOf(context).height;
 
     return Material(
@@ -1017,6 +1118,9 @@ class _DetailsPanelState extends State<_DetailsPanel> {
                   _DetailsBody(
                     word: widget.word,
                     dictionaryFuture: dictionaryFuture,
+                    merriamDictionaryFuture: merriamDictionaryFuture,
+                    merriamThesaurusFuture: merriamThesaurusFuture,
+                    referenceApiSettings: widget.referenceApiSettings,
                     previousStatus: widget.previousStatus,
                     selectedView: widget.selectedView,
                   ),
@@ -1030,7 +1134,12 @@ class _DetailsPanelState extends State<_DetailsPanel> {
   }
 }
 
-enum _DetailsView { studyInfo, dictionaryApi }
+enum _DetailsView {
+  studyInfo,
+  dictionaryApi,
+  merriamDictionary,
+  merriamThesaurus,
+}
 
 class _DetailsToolbar extends StatelessWidget {
   const _DetailsToolbar({
@@ -1070,6 +1179,16 @@ class _DetailsToolbar extends StatelessWidget {
               selected: selectedView == _DetailsView.dictionaryApi,
               onSelected: (_) => onViewSelected(_DetailsView.dictionaryApi),
             ),
+            ChoiceChip(
+              label: const Text('M-W Dictionary'),
+              selected: selectedView == _DetailsView.merriamDictionary,
+              onSelected: (_) => onViewSelected(_DetailsView.merriamDictionary),
+            ),
+            ChoiceChip(
+              label: const Text('M-W Thesaurus'),
+              selected: selectedView == _DetailsView.merriamThesaurus,
+              onSelected: (_) => onViewSelected(_DetailsView.merriamThesaurus),
+            ),
           ],
         ),
       ],
@@ -1081,12 +1200,18 @@ class _DetailsBody extends StatelessWidget {
   const _DetailsBody({
     required this.word,
     required this.dictionaryFuture,
+    required this.merriamDictionaryFuture,
+    required this.merriamThesaurusFuture,
+    required this.referenceApiSettings,
     required this.previousStatus,
     this.selectedView = _DetailsView.studyInfo,
   });
 
   final VocabWord word;
   final Future<DictionaryEntry?> dictionaryFuture;
+  final Future<DictionaryEntry?>? merriamDictionaryFuture;
+  final Future<ThesaurusEntry?>? merriamThesaurusFuture;
+  final ReferenceApiSettings referenceApiSettings;
   final WordStatus? previousStatus;
   final _DetailsView selectedView;
 
@@ -1094,6 +1219,18 @@ class _DetailsBody extends StatelessWidget {
   Widget build(BuildContext context) {
     if (selectedView == _DetailsView.dictionaryApi) {
       return _DictionaryApiPanel(dictionaryFuture: dictionaryFuture);
+    }
+    if (selectedView == _DetailsView.merriamDictionary) {
+      return _MerriamDictionaryPanel(
+        dictionaryFuture: merriamDictionaryFuture,
+        hasApiKey: referenceApiSettings.hasMerriamDictionaryKey,
+      );
+    }
+    if (selectedView == _DetailsView.merriamThesaurus) {
+      return _MerriamThesaurusPanel(
+        thesaurusFuture: merriamThesaurusFuture,
+        hasApiKey: referenceApiSettings.hasMerriamThesaurusKey,
+      );
     }
 
     return Column(
@@ -1208,6 +1345,188 @@ class _DictionaryApiPanel extends StatelessWidget {
               _DictionaryMeaningSection(meaning: entry.meanings[index]),
               if (index < entry.meanings.length - 1) const SizedBox(height: 18),
             ],
+            if (entry.sourceUrls.isNotEmpty) ...<Widget>[
+              const SizedBox(height: 18),
+              _SourceLinkSection(title: 'Sources', urls: entry.sourceUrls),
+            ],
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _MerriamDictionaryPanel extends StatelessWidget {
+  const _MerriamDictionaryPanel({
+    required this.dictionaryFuture,
+    required this.hasApiKey,
+  });
+
+  final Future<DictionaryEntry?>? dictionaryFuture;
+  final bool hasApiKey;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!hasApiKey || dictionaryFuture == null) {
+      return const _DetailSection(
+        title: 'Merriam-Webster Dictionary',
+        body: 'Add your Merriam Dictionary key in Settings to use this tab.',
+      );
+    }
+
+    return FutureBuilder<DictionaryEntry?>(
+      future: dictionaryFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const _DetailSection(
+            title: 'Merriam-Webster Dictionary',
+            body: 'Loading Merriam-Webster dictionary details...',
+          );
+        }
+
+        if (snapshot.hasError) {
+          return const _DetailSection(
+            title: 'Merriam-Webster Dictionary',
+            body: 'Could not load Merriam-Webster dictionary details.',
+          );
+        }
+
+        final entry = snapshot.data;
+        if (entry == null) {
+          return const _DetailSection(
+            title: 'Merriam-Webster Dictionary',
+            body: 'No Merriam-Webster dictionary details found for this word.',
+          );
+        }
+
+        if (entry.suggestions.isNotEmpty) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              const _DetailSection(
+                title: 'Merriam-Webster Dictionary',
+                body: 'No exact entry was found. Try one of these suggestions.',
+              ),
+              const SizedBox(height: 10),
+              _InlineMetadataSection(
+                title: 'Suggestions',
+                entries: entry.suggestions,
+              ),
+            ],
+          );
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            if (entry.phonetic != null && entry.phonetic!.isNotEmpty)
+              _DetailSection(title: 'Pronunciation', body: entry.phonetic!),
+            if (entry.phonetic != null && entry.phonetic!.isNotEmpty)
+              const SizedBox(height: 14),
+            for (
+              var index = 0;
+              index < entry.meanings.length;
+              index++
+            ) ...<Widget>[
+              _DictionaryMeaningSection(meaning: entry.meanings[index]),
+              if (index < entry.meanings.length - 1) const SizedBox(height: 18),
+            ],
+            if (entry.sourceUrls.isNotEmpty) ...<Widget>[
+              const SizedBox(height: 18),
+              _SourceLinkSection(title: 'Sources', urls: entry.sourceUrls),
+            ],
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _MerriamThesaurusPanel extends StatelessWidget {
+  const _MerriamThesaurusPanel({
+    required this.thesaurusFuture,
+    required this.hasApiKey,
+  });
+
+  final Future<ThesaurusEntry?>? thesaurusFuture;
+  final bool hasApiKey;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!hasApiKey || thesaurusFuture == null) {
+      return const _DetailSection(
+        title: 'Merriam-Webster Thesaurus',
+        body: 'Add your Merriam Thesaurus key in Settings to use this tab.',
+      );
+    }
+
+    return FutureBuilder<ThesaurusEntry?>(
+      future: thesaurusFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const _DetailSection(
+            title: 'Merriam-Webster Thesaurus',
+            body: 'Loading Merriam-Webster thesaurus details...',
+          );
+        }
+
+        if (snapshot.hasError) {
+          return const _DetailSection(
+            title: 'Merriam-Webster Thesaurus',
+            body: 'Could not load Merriam-Webster thesaurus details.',
+          );
+        }
+
+        final entry = snapshot.data;
+        if (entry == null) {
+          return const _DetailSection(
+            title: 'Merriam-Webster Thesaurus',
+            body: 'No Merriam-Webster thesaurus details found for this word.',
+          );
+        }
+
+        if (entry.suggestions.isNotEmpty) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              const _DetailSection(
+                title: 'Merriam-Webster Thesaurus',
+                body: 'No exact entry was found. Try one of these suggestions.',
+              ),
+              const SizedBox(height: 10),
+              _InlineMetadataSection(
+                title: 'Suggestions',
+                entries: entry.suggestions,
+              ),
+            ],
+          );
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            if (entry.partOfSpeech != null && entry.partOfSpeech!.isNotEmpty)
+              _DetailSection(
+                title: 'Part of speech',
+                body: entry.partOfSpeech!,
+              ),
+            if (entry.partOfSpeech != null && entry.partOfSpeech!.isNotEmpty)
+              const SizedBox(height: 14),
+            if (entry.senses.isNotEmpty)
+              _InlineMetadataSection(title: 'Senses', entries: entry.senses),
+            if (entry.senses.isNotEmpty) const SizedBox(height: 14),
+            if (entry.synonyms.isNotEmpty)
+              _InlineMetadataSection(
+                title: 'Synonyms',
+                entries: entry.synonyms,
+              ),
+            if (entry.synonyms.isNotEmpty && entry.antonyms.isNotEmpty)
+              const SizedBox(height: 14),
+            if (entry.antonyms.isNotEmpty)
+              _InlineMetadataSection(
+                title: 'Antonyms',
+                entries: entry.antonyms,
+              ),
             if (entry.sourceUrls.isNotEmpty) ...<Widget>[
               const SizedBox(height: 18),
               _SourceLinkSection(title: 'Sources', urls: entry.sourceUrls),

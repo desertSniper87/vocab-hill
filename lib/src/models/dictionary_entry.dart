@@ -4,12 +4,14 @@ class DictionaryEntry {
     required this.phonetic,
     required this.meanings,
     required this.sourceUrls,
+    this.suggestions = const <String>[],
   });
 
   final String word;
   final String? phonetic;
   final List<DictionaryMeaning> meanings;
   final List<String> sourceUrls;
+  final List<String> suggestions;
 }
 
 class DictionaryMeaning {

@@ -8,6 +8,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 
 import '../models/progress_snapshot.dart';
+import '../models/reference_api_settings.dart';
 import '../models/sync_settings.dart';
 import '../models/word_status.dart';
 import 'progress_sync_client.dart';
@@ -23,6 +24,10 @@ abstract class ProgressRepository {
 
   Future<void> saveSyncSettings(SyncSettings settings);
 
+  Future<ReferenceApiSettings> loadReferenceApiSettings();
+
+  Future<void> saveReferenceApiSettings(ReferenceApiSettings settings);
+
   Future<ProgressSnapshot> syncNow();
 }
 
@@ -34,6 +39,8 @@ class SqliteProgressRepository implements ProgressRepository {
   static const _selectedDayKey = 'selected_day';
   static const _syncServerUrlKey = 'sync_server_url';
   static const _syncKeyKey = 'sync_key';
+  static const _merriamDictionaryKey = 'merriam_dictionary_key';
+  static const _merriamThesaurusKey = 'merriam_thesaurus_key';
   static const _migrationFlagKey = 'legacy_shared_prefs_migrated';
   static const _legacySelectedDayKey = 'progress.selected_day';
   static const _legacyStatusPrefix = 'progress.word_status.';
@@ -94,6 +101,47 @@ class SqliteProgressRepository implements ProgressRepository {
       database,
       key: _syncKeyKey,
       value: settings.syncKey.trim(),
+    );
+  }
+
+  @override
+  Future<ReferenceApiSettings> loadReferenceApiSettings() async {
+    final database = await _databaseFuture;
+    final rows = await database.query(
+      'app_state',
+      columns: <String>['key', 'value'],
+      where: 'key IN (?, ?)',
+      whereArgs: <Object>[_merriamDictionaryKey, _merriamThesaurusKey],
+    );
+
+    var merriamDictionaryKey = '';
+    var merriamThesaurusKey = '';
+    for (final row in rows) {
+      if (row['key'] == _merriamDictionaryKey) {
+        merriamDictionaryKey = row['value'] as String;
+      } else if (row['key'] == _merriamThesaurusKey) {
+        merriamThesaurusKey = row['value'] as String;
+      }
+    }
+
+    return ReferenceApiSettings(
+      merriamDictionaryKey: merriamDictionaryKey,
+      merriamThesaurusKey: merriamThesaurusKey,
+    );
+  }
+
+  @override
+  Future<void> saveReferenceApiSettings(ReferenceApiSettings settings) async {
+    final database = await _databaseFuture;
+    await _setAppStateValue(
+      database,
+      key: _merriamDictionaryKey,
+      value: settings.merriamDictionaryKey.trim(),
+    );
+    await _setAppStateValue(
+      database,
+      key: _merriamThesaurusKey,
+      value: settings.merriamThesaurusKey.trim(),
     );
   }
 

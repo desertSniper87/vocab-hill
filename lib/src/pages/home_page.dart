@@ -1,9 +1,10 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:url_launcher/link.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../models/dictionary_entry.dart';
 import '../models/progress_snapshot.dart';
@@ -1115,14 +1116,16 @@ class _DetailsPanelState extends State<_DetailsPanel> {
                     onViewSelected: widget.onViewSelected,
                   ),
                   const SizedBox(height: 18),
-                  _DetailsBody(
-                    word: widget.word,
-                    dictionaryFuture: dictionaryFuture,
-                    merriamDictionaryFuture: merriamDictionaryFuture,
-                    merriamThesaurusFuture: merriamThesaurusFuture,
-                    referenceApiSettings: widget.referenceApiSettings,
-                    previousStatus: widget.previousStatus,
-                    selectedView: widget.selectedView,
+                  SelectionArea(
+                    child: _DetailsBody(
+                      word: widget.word,
+                      dictionaryFuture: dictionaryFuture,
+                      merriamDictionaryFuture: merriamDictionaryFuture,
+                      merriamThesaurusFuture: merriamThesaurusFuture,
+                      referenceApiSettings: widget.referenceApiSettings,
+                      previousStatus: widget.previousStatus,
+                      selectedView: widget.selectedView,
+                    ),
                   ),
                 ],
               ),
@@ -1655,24 +1658,49 @@ class _SourceLinkSection extends StatelessWidget {
         for (final url in urls)
           Padding(
             padding: const EdgeInsets.only(bottom: 6),
-            child: Link(
-              uri: Uri.parse(url),
-              target: LinkTarget.blank,
-              builder: (context, followLink) {
-                return InkWell(
-                  onTap: followLink,
-                  child: Text(
-                    url,
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: const Color(0xFF1A73E8),
-                      decoration: TextDecoration.underline,
-                    ),
-                  ),
-                );
-              },
-            ),
+            child: _SelectableExternalLink(url: url),
           ),
       ],
+    );
+  }
+}
+
+class _SelectableExternalLink extends StatefulWidget {
+  const _SelectableExternalLink({required this.url});
+
+  final String url;
+
+  @override
+  State<_SelectableExternalLink> createState() =>
+      _SelectableExternalLinkState();
+}
+
+class _SelectableExternalLinkState extends State<_SelectableExternalLink> {
+  late final TapGestureRecognizer _tapRecognizer = TapGestureRecognizer()
+    ..onTap = _openLink;
+
+  @override
+  void dispose() {
+    _tapRecognizer.dispose();
+    super.dispose();
+  }
+
+  Future<void> _openLink() async {
+    await launchUrl(Uri.parse(widget.url), webOnlyWindowName: '_blank');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SelectableText.rich(
+      TextSpan(
+        text: widget.url,
+        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+          color: const Color(0xFF1A73E8),
+          decoration: TextDecoration.underline,
+        ),
+        recognizer: _tapRecognizer,
+      ),
+      cursorColor: const Color(0xFF1A73E8),
     );
   }
 }

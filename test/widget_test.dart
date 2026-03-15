@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:vocab_hill/src/app.dart';
 import 'package:vocab_hill/src/models/dictionary_entry.dart';
 import 'package:vocab_hill/src/models/progress_snapshot.dart';
@@ -256,6 +256,8 @@ void main() {
     await tester.tap(find.text('Dictionary API'));
     await tester.pumpAndSettle();
 
+    expect(find.byType(SelectionArea), findsWidgets);
+    expect(find.byType(SelectableText), findsWidgets);
     expect(find.text('Phonetic'), findsOneWidget);
     expect(find.text('/əˈbaʊnd/'), findsOneWidget);
     expect(find.text('Meaning (verb)'), findsOneWidget);

@@ -12,6 +12,7 @@ The starter project includes:
 - keyboard control: arrows move, `d` toggles the study-info details view, `t` switches to `Dictionary API`, `y` switches to `M-W Dictionary`, `u` switches to `M-W Thesaurus`, `g` marks remembered, and `r` marks forgotten
 - a top-level `Forgotten List` export that produces a comma-separated copyable list based on each word's latest recorded status
 - per-word detail sheets with a `Study Info` view for the local definition, a top-level previous-day status badge, Bangla, and mnemonic, plus separate `Dictionary API`, `M-W Dictionary`, and `M-W Thesaurus` views
+- reference-panel text is selectable and source URLs open as clickable links in web builds
 - persisted per-day `learned` / `forgotten` marks and selected day using SQLite-backed local storage
 - local SQLite storage for Merriam-Webster dictionary and thesaurus API keys so they are not shipped in the web bundle
 - optional cross-browser sync through matching Python or Dart backends plus a shared sync key

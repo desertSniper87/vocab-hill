@@ -80,15 +80,17 @@ flowchart TD
 
 `lib/src/pages/home_page.dart:L740-L822` — `_SyncSettingsDialogState.build` — combines remote sync identity fields with local Merriam-Webster key fields in one scrollable dialog so the learner can configure external services without exposing those keys in code.
 
-`lib/src/pages/home_page.dart:L1026-L1120` — `_DetailsPanelState.build` — keeps the selected subview inside the details card so the learner can switch between local study info, the free dictionary provider, and two Merriam-Webster tabs without leaving the current word.
+`lib/src/pages/home_page.dart:L1041-L1137` — `_DetailsPanelState.build` — keeps the selected subview inside the details card and wraps the body in `SelectionArea` so reference text stays selectable while the learner switches between local study info, the free dictionary provider, and two Merriam-Webster tabs.
 
-`lib/src/pages/home_page.dart:L1292-L1342` — `_DictionaryApiPanel.build` — loads the selected word through `DictionaryRepository` and renders loading, empty, and error states so the free external dictionary source does not block the rest of the details card.
+`lib/src/pages/home_page.dart:L1310-L1359` — `_DictionaryApiPanel.build` — loads the selected word through `DictionaryRepository` and renders loading, empty, and error states so the free external dictionary source does not block the rest of the details card.
 
-`lib/src/pages/home_page.dart:L1355-L1428` — `_MerriamDictionaryPanel.build` — renders missing-key, loading, suggestion, and definition states so the Merriam dictionary tab stays usable even when the API returns alternatives instead of an exact headword.
+`lib/src/pages/home_page.dart:L1371-L1445` — `_MerriamDictionaryPanel.build` — renders missing-key, loading, suggestion, and definition states so the Merriam dictionary tab stays usable even when the API returns alternatives instead of an exact headword.
 
-`lib/src/pages/home_page.dart:L1440-L1524` — `_MerriamThesaurusPanel.build` — renders missing-key, loading, suggestion, and synonym/antonym states so the thesaurus tab can degrade cleanly when the learner has not configured a key or the headword has no exact hit.
+`lib/src/pages/home_page.dart:L1457-L1541` — `_MerriamThesaurusPanel.build` — renders missing-key, loading, suggestion, and synonym/antonym states so the thesaurus tab can degrade cleanly when the learner has not configured a key or the headword has no exact hit.
 
-`lib/src/pages/home_page.dart:L1634-L1663` — `_SourceLinkSection.build` — renders source URLs as real links so dictionary and thesaurus references can be opened directly in the browser from the details panel.
+`lib/src/pages/home_page.dart:L1651-L1665` — `_SourceLinkSection.build` — renders source URLs through a selectable external-link widget so dictionary and thesaurus references stay both copyable and clickable in web builds.
+
+`lib/src/pages/home_page.dart:L1692-L1705` — `_SelectableExternalLinkState.build` — uses `SelectableText.rich` plus an explicit launcher gesture so source URLs remain both selectable and clickable in production web builds.
 
 `lib/src/pages/home_page.dart:L635-L698` — `_DayHeader.build` — ties the displayed day label and slider to the selected cumulative board, exposes the settings dialog, and exports a copyable forgotten-word list from the page header.
 

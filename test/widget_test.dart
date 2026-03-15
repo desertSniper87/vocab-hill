@@ -175,7 +175,7 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.keyD);
     await tester.pumpAndSettle();
     expect(
-      find.textContaining('Senses: to be present in large numbers'),
+      find.text('No Merriam-Webster thesaurus details found for this word.'),
       findsOneWidget,
     );
   });

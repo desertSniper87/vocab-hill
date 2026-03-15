@@ -78,6 +78,21 @@ void main() {
   });
 
   testWidgets('supports keyboard navigation and shortcuts', (tester) async {
+    String? clipboardText;
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(SystemChannels.platform, (methodCall) async {
+          if (methodCall.method == 'Clipboard.setData') {
+            clipboardText =
+                (methodCall.arguments as Map<dynamic, dynamic>)['text']
+                    as String?;
+          }
+          return null;
+        });
+    addTearDown(() {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(SystemChannels.platform, null);
+    });
+
     final progressRepository = FakeProgressRepository(
       snapshot: const ProgressSnapshot(
         selectedDay: 3,
@@ -97,6 +112,13 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyC);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    await tester.pump();
+    expect(clipboardText, 'abound');
+    expect(find.text('Copied "abound".'), findsOneWidget);
 
     await tester.sendKeyEvent(LogicalKeyboardKey.keyG);
     await tester.pump();

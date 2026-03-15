@@ -7,7 +7,7 @@ Vocab Hill is a study tool for GregMat-style vocabulary learning.
 - The app presents vocabulary in numbered groups of 30 words arranged into a day board.
 - Each day reveals all groups from `Group 1` through the selected day number, matching the vocab mountain style.
 - Users can inspect a word's details and mark words as learned or forgotten for the currently selected day.
-- Keyboard control supports arrows or `h` `j` `k` `l` for movement, `d` for the study-info details view, `t` for the `Dictionary API` tab, `y` for `M-W Dictionary`, `u` for `M-W Thesaurus`, `g` for learned, and `r` for forgotten.
+- Keyboard control supports arrows or `h` `j` `k` `l` for movement, `Cmd+C` / `Ctrl+C` to copy the selected word while the board is active, `d` for the study-info details view, `t` for the `Dictionary API` tab, `y` for `M-W Dictionary`, `u` for `M-W Thesaurus`, `g` for learned, and `r` for forgotten.
 - The currently selected details tab is remembered within the session, so moving to another word keeps the same reference mode active until the learner changes it.
 - The top header can export forgotten words as a comma-separated list using each word's latest recorded status across days.
 - The details panel has a `Study Info` mode for local notes plus a top-level previous-day status badge, a free `Dictionary API` mode from `api.dictionaryapi.dev`, and separate `M-W Dictionary` and `M-W Thesaurus` modes backed by learner-supplied Merriam-Webster API keys.

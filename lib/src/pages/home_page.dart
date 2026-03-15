@@ -520,6 +520,22 @@ class _HomePageState extends State<HomePage> {
     if (selectedWord == null) {
       return KeyEventResult.ignored;
     }
+    if (!_detailsOpen &&
+        key == LogicalKeyboardKey.keyC &&
+        (HardwareKeyboard.instance.isMetaPressed ||
+            HardwareKeyboard.instance.isControlPressed)) {
+      unawaited(
+        Clipboard.setData(ClipboardData(text: selectedWord.word)).then((_) {
+          if (!mounted) {
+            return;
+          }
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Copied "${selectedWord.word}".')),
+          );
+        }),
+      );
+      return KeyEventResult.handled;
+    }
     if (key == LogicalKeyboardKey.keyD) {
       setState(() {
         _detailsOpen = !_detailsOpen;

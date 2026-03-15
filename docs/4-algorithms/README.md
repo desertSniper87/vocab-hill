@@ -76,7 +76,7 @@ flowchart TD
 
 `lib/src/pages/home_page.dart:L460-L469` — `_HomePageState._latestPreviousStatus` — walks backward through earlier days so each cell can show the most recent prior-day marker without mixing it into the current day's main status color.
 
-`lib/src/pages/home_page.dart:L471-L569` — `_HomePageState._handleBoardKeyEvent` — maps arrows plus `h` `j` `k` `l` and `d` / `t` / `y` / `u` / `g` / `r` onto the selected cell so learners can move, open any reference tab from the keyboard, and classify words without leaving the board.
+`lib/src/pages/home_page.dart:L471-L569` — `_HomePageState._handleBoardKeyEvent` — maps arrows plus `h` `j` `k` `l`, board-only `Cmd+C` / `Ctrl+C`, and `d` / `t` / `y` / `u` / `g` / `r` onto the selected cell so learners can move, copy the active word, open any reference tab, and classify words without leaving the board without intercepting copy inside the details panel.
 
 `lib/src/pages/home_page.dart:L740-L822` — `_SyncSettingsDialogState.build` — combines remote sync identity fields with local Merriam-Webster key fields in one scrollable dialog so the learner can configure external services without exposing those keys in code.
 

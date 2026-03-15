@@ -77,6 +77,49 @@ void main() {
     expect(progressRepository.savedStatuses[2]?['abound'], WordStatus.learned);
   });
 
+  testWidgets('copies the word when the details title is tapped', (
+    tester,
+  ) async {
+    String? clipboardText;
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(SystemChannels.platform, (methodCall) async {
+          if (methodCall.method == 'Clipboard.setData') {
+            clipboardText =
+                (methodCall.arguments as Map<dynamic, dynamic>)['text']
+                    as String?;
+          }
+          return null;
+        });
+    addTearDown(() {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(SystemChannels.platform, null);
+    });
+
+    final progressRepository = FakeProgressRepository(
+      snapshot: const ProgressSnapshot(
+        selectedDay: 1,
+        wordStatusesByDay: <int, Map<String, WordStatus>>{},
+      ),
+    );
+
+    await tester.pumpWidget(
+      VocabHillApp(
+        dictionaryRepository: FakeDictionaryRepository(),
+        repository: FakeVocabRepository(),
+        progressRepository: progressRepository,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('abound'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('details-word-title')));
+    await tester.pump();
+
+    expect(clipboardText, 'abound');
+    expect(find.text('Copied "abound".'), findsOneWidget);
+  });
+
   testWidgets('supports keyboard navigation and shortcuts', (tester) async {
     String? clipboardText;
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger

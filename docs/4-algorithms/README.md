@@ -80,7 +80,7 @@ flowchart TD
 
 `lib/src/pages/home_page.dart:L740-L822` — `_SyncSettingsDialogState.build` — combines remote sync identity fields with local Merriam-Webster key fields in one scrollable dialog so the learner can configure external services without exposing those keys in code.
 
-`lib/src/pages/home_page.dart:L1041-L1137` — `_DetailsPanelState.build` — renders whichever details tab the page-level session state last selected and wraps the body in `SelectionArea` so reference text stays selectable while the learner moves between words.
+`lib/src/pages/home_page.dart:L1041-L1137` — `_DetailsPanelState.build` — renders whichever details tab the page-level session state last selected, makes the header word itself a copy affordance, and wraps the body in `SelectionArea` so reference text stays selectable while the learner moves between words.
 
 `lib/src/pages/home_page.dart:L1310-L1359` — `_DictionaryApiPanel.build` — loads the selected word through `DictionaryRepository` and renders loading, empty, and error states so the free external dictionary source does not block the rest of the details card.
 

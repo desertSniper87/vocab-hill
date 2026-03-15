@@ -13,6 +13,7 @@ The starter project includes:
 - the selected reference tab is remembered for the current session, so moving to another word keeps the same details tab open
 - a top-level `Forgotten List` export that produces a comma-separated copyable list based on each word's latest recorded status
 - per-word detail sheets with a `Study Info` view for the local definition, a top-level previous-day status badge, Bangla, and mnemonic, plus separate `Dictionary API`, `M-W Dictionary`, and `M-W Thesaurus` views
+- clicking the word title inside the details panel copies that word
 - reference-panel text is selectable and source URLs open as clickable links in web builds
 - persisted per-day `learned` / `forgotten` marks and selected day using SQLite-backed local storage
 - local SQLite storage for Merriam-Webster dictionary and thesaurus API keys so they are not shipped in the web bundle

@@ -17,6 +17,16 @@ import '../repositories/dictionary_repository.dart';
 import '../repositories/progress_repository.dart';
 import '../repositories/vocab_repository.dart';
 
+Future<void> _copyWordToClipboard(BuildContext context, String word) async {
+  await Clipboard.setData(ClipboardData(text: word));
+  if (!context.mounted) {
+    return;
+  }
+  ScaffoldMessenger.of(
+    context,
+  ).showSnackBar(SnackBar(content: Text('Copied "$word".')));
+}
+
 class HomePage extends StatefulWidget {
   const HomePage({
     super.key,
@@ -524,16 +534,7 @@ class _HomePageState extends State<HomePage> {
         key == LogicalKeyboardKey.keyC &&
         (HardwareKeyboard.instance.isMetaPressed ||
             HardwareKeyboard.instance.isControlPressed)) {
-      unawaited(
-        Clipboard.setData(ClipboardData(text: selectedWord.word)).then((_) {
-          if (!mounted) {
-            return;
-          }
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Copied "${selectedWord.word}".')),
-          );
-        }),
-      );
+      unawaited(_copyWordToClipboard(context, selectedWord.word));
       return KeyEventResult.handled;
     }
     if (key == LogicalKeyboardKey.keyD) {
@@ -1096,9 +1097,21 @@ class _DetailsPanelState extends State<_DetailsPanel> {
                   Row(
                     children: <Widget>[
                       Expanded(
-                        child: Text(
-                          widget.word.word,
-                          style: Theme.of(context).textTheme.headlineSmall,
+                        child: InkWell(
+                          key: const Key('details-word-title'),
+                          borderRadius: BorderRadius.circular(8),
+                          onTap: () {
+                            unawaited(
+                              _copyWordToClipboard(context, widget.word.word),
+                            );
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            child: Text(
+                              widget.word.word,
+                              style: Theme.of(context).textTheme.headlineSmall,
+                            ),
+                          ),
                         ),
                       ),
                       TextButton(

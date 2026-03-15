@@ -128,8 +128,16 @@ void main() {
     );
     expect(find.textContaining('Synonyms: teem, overflow'), findsOneWidget);
 
-    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyH);
     await tester.pumpAndSettle();
+    expect(find.text('Definition'), findsOneWidget);
+    expect(find.text('To exist in large quantities.'), findsOneWidget);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyL);
+    await tester.pumpAndSettle();
+    expect(find.text('Definition'), findsOneWidget);
+    expect(find.text('To make impure.'), findsOneWidget);
+
     await tester.sendKeyEvent(LogicalKeyboardKey.keyR);
     await tester.pump();
 
@@ -137,6 +145,13 @@ void main() {
       progressRepository.savedStatuses[3]?['adulterate'],
       WordStatus.forgotten,
     );
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyJ);
+    await tester.pumpAndSettle();
+    expect(find.text('To make impure.'), findsOneWidget);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyK);
+    await tester.pumpAndSettle();
     expect(find.text('To make impure.'), findsOneWidget);
 
     await tester.sendKeyEvent(LogicalKeyboardKey.keyD);

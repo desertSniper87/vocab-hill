@@ -481,7 +481,7 @@ class _HomePageState extends State<HomePage> {
     final selectedWord = _selectedWord(visibleGroups, groupedWords);
     final key = event.logicalKey;
 
-    if (key == LogicalKeyboardKey.arrowLeft) {
+    if (key == LogicalKeyboardKey.arrowLeft || key == LogicalKeyboardKey.keyH) {
       setState(() {
         _selectedColumnIndex = math.max(0, _selectedColumnIndex - 1);
         _clampSelection(visibleGroups, groupedWords);
@@ -491,7 +491,8 @@ class _HomePageState extends State<HomePage> {
       });
       return KeyEventResult.handled;
     }
-    if (key == LogicalKeyboardKey.arrowRight) {
+    if (key == LogicalKeyboardKey.arrowRight ||
+        key == LogicalKeyboardKey.keyL) {
       setState(() {
         _selectedColumnIndex = math.min(
           visibleGroups.length - 1,
@@ -504,7 +505,7 @@ class _HomePageState extends State<HomePage> {
       });
       return KeyEventResult.handled;
     }
-    if (key == LogicalKeyboardKey.arrowUp) {
+    if (key == LogicalKeyboardKey.arrowUp || key == LogicalKeyboardKey.keyK) {
       setState(() {
         _selectedRowIndex = math.max(0, _selectedRowIndex - 1);
         _clampSelection(visibleGroups, groupedWords);
@@ -514,7 +515,7 @@ class _HomePageState extends State<HomePage> {
       });
       return KeyEventResult.handled;
     }
-    if (key == LogicalKeyboardKey.arrowDown) {
+    if (key == LogicalKeyboardKey.arrowDown || key == LogicalKeyboardKey.keyJ) {
       final currentWords =
           groupedWords[visibleGroups[_selectedColumnIndex]] ??
           const <VocabWord>[];

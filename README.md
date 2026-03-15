@@ -9,7 +9,7 @@ The starter project includes:
 - a day-based board that reveals Groups `1..N` for the selected day
 - a horizontal multi-column layout modeled on the vocab mountain view
 - a right-side green/red marker showing the most recent previous-day mark for that word
-- keyboard control: arrows move, `d` toggles the study-info details view, `t` switches to `Dictionary API`, `y` switches to `M-W Dictionary`, `u` switches to `M-W Thesaurus`, `g` marks remembered, and `r` marks forgotten
+- keyboard control: arrows or `h` `j` `k` `l` move, `d` toggles the study-info details view, `t` switches to `Dictionary API`, `y` switches to `M-W Dictionary`, `u` switches to `M-W Thesaurus`, `g` marks remembered, and `r` marks forgotten
 - a top-level `Forgotten List` export that produces a comma-separated copyable list based on each word's latest recorded status
 - per-word detail sheets with a `Study Info` view for the local definition, a top-level previous-day status badge, Bangla, and mnemonic, plus separate `Dictionary API`, `M-W Dictionary`, and `M-W Thesaurus` views
 - reference-panel text is selectable and source URLs open as clickable links in web builds

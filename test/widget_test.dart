@@ -130,13 +130,18 @@ void main() {
 
     await tester.sendKeyEvent(LogicalKeyboardKey.keyH);
     await tester.pumpAndSettle();
-    expect(find.text('Definition'), findsOneWidget);
-    expect(find.text('To exist in large quantities.'), findsOneWidget);
+    expect(
+      find.textContaining('Senses: to be present in large numbers'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('Synonyms: teem, overflow'), findsOneWidget);
 
     await tester.sendKeyEvent(LogicalKeyboardKey.keyL);
     await tester.pumpAndSettle();
-    expect(find.text('Definition'), findsOneWidget);
-    expect(find.text('To make impure.'), findsOneWidget);
+    expect(
+      find.text('No Merriam-Webster thesaurus details found for this word.'),
+      findsOneWidget,
+    );
 
     await tester.sendKeyEvent(LogicalKeyboardKey.keyR);
     await tester.pump();
@@ -148,15 +153,31 @@ void main() {
 
     await tester.sendKeyEvent(LogicalKeyboardKey.keyJ);
     await tester.pumpAndSettle();
-    expect(find.text('To make impure.'), findsOneWidget);
+    expect(
+      find.text('No Merriam-Webster thesaurus details found for this word.'),
+      findsOneWidget,
+    );
 
     await tester.sendKeyEvent(LogicalKeyboardKey.keyK);
     await tester.pumpAndSettle();
-    expect(find.text('To make impure.'), findsOneWidget);
+    expect(
+      find.text('No Merriam-Webster thesaurus details found for this word.'),
+      findsOneWidget,
+    );
 
     await tester.sendKeyEvent(LogicalKeyboardKey.keyD);
     await tester.pumpAndSettle();
-    expect(find.text('Definition'), findsNothing);
+    expect(
+      find.textContaining('Senses: to be present in large numbers'),
+      findsNothing,
+    );
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyD);
+    await tester.pumpAndSettle();
+    expect(
+      find.textContaining('Senses: to be present in large numbers'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('stores sync settings from the header dialog', (tester) async {

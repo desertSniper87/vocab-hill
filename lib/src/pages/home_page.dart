@@ -198,8 +198,6 @@ class _HomePageState extends State<HomePage> {
                                           _selectedColumnIndex = groupIndex;
                                           _selectedRowIndex = rowIndex;
                                           _detailsOpen = true;
-                                          _selectedDetailsView =
-                                              _DetailsView.studyInfo;
                                         });
                                         _boardFocusNode.requestFocus();
                                       },
@@ -485,9 +483,6 @@ class _HomePageState extends State<HomePage> {
       setState(() {
         _selectedColumnIndex = math.max(0, _selectedColumnIndex - 1);
         _clampSelection(visibleGroups, groupedWords);
-        if (_detailsOpen) {
-          _selectedDetailsView = _DetailsView.studyInfo;
-        }
       });
       return KeyEventResult.handled;
     }
@@ -499,9 +494,6 @@ class _HomePageState extends State<HomePage> {
           _selectedColumnIndex + 1,
         );
         _clampSelection(visibleGroups, groupedWords);
-        if (_detailsOpen) {
-          _selectedDetailsView = _DetailsView.studyInfo;
-        }
       });
       return KeyEventResult.handled;
     }
@@ -509,9 +501,6 @@ class _HomePageState extends State<HomePage> {
       setState(() {
         _selectedRowIndex = math.max(0, _selectedRowIndex - 1);
         _clampSelection(visibleGroups, groupedWords);
-        if (_detailsOpen) {
-          _selectedDetailsView = _DetailsView.studyInfo;
-        }
       });
       return KeyEventResult.handled;
     }
@@ -525,9 +514,6 @@ class _HomePageState extends State<HomePage> {
           _selectedRowIndex + 1,
         );
         _clampSelection(visibleGroups, groupedWords);
-        if (_detailsOpen) {
-          _selectedDetailsView = _DetailsView.studyInfo;
-        }
       });
       return KeyEventResult.handled;
     }
@@ -537,9 +523,6 @@ class _HomePageState extends State<HomePage> {
     if (key == LogicalKeyboardKey.keyD) {
       setState(() {
         _detailsOpen = !_detailsOpen;
-        if (_detailsOpen) {
-          _selectedDetailsView = _DetailsView.studyInfo;
-        }
       });
       return KeyEventResult.handled;
     }
